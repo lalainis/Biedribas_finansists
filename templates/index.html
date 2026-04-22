@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Biedribas Finansists</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div id="app">
+    {% raw %}
+    <header class="topbar">
+      <h1>Biedribas Finansists</h1>
+      <button v-if="token" @click="logout" class="ghost">Izrakstities</button>
+    </header>
+
+    <main class="shell" v-if="!token">
+      <section class="card">
+        <h2>Ienakt sistema</h2>
+        <p class="muted">Telefona numurs ar 8 cipariem un 4 ciparu PIN kods.</p>
+
+        <label>Telefona numurs</label>
+        <input v-model="auth.phone" maxlength="8" placeholder="29123456" />
+
+        <button @click="checkPhone">Turpinat</button>
+
+        <div v-if="auth.step === 'setup'">
+          <label>Jaunais PIN</label>
+          <input type="password" v-model="auth.pin" maxlength="4" />
+
+          <label>PIN atkartoti</label>
+          <input type="password" v-model="auth.pinConfirm" maxlength="4" />
+
+          <button @click="setupPin">Saglabat PIN</button>
+        </div>
+
+        <div v-if="auth.step === 'login'">
+          <label>PIN kods</label>
+          <input type="password" v-model="auth.pin" maxlength="4" />
+          <button @click="login">Ielogoties</button>
+        </div>
+
+        <p class="error" v-if="errorMessage">{{ errorMessage }}</p>
+      </section>
+    </main>
+
+    <main class="shell" v-else>
+      <section class="dashboard card">
+        <h2>Aktualais stavoklis</h2>
+        <div class="stats">
+          <article>
+            <small>Ienemumi EUR</small>
+            <strong>{{ dashboard.totals.income_total.toFixed(2) }}</strong>
+          </article>
+          <article>
+            <small>Izdevumi EUR</small>
+            <strong>{{ dashboard.totals.expense_total.toFixed(2) }}</strong>
+          </article>
+          <article>
+            <small>Atlikums / Deficits</small>
+            <strong :class="dashboard.totals.difference >= 0 ? 'ok' : 'warn'">
+              {{ dashboard.totals.difference.toFixed(2) }}
+            </strong>
+          </article>
+        </div>
+        <p class="muted">Periods: {{ dashboard.period.season_label }} ({{ dashboard.period.start_date }} - {{ dashboard.period.end_date }})</p>
+      </section>
+
+      <nav class="tabs card">
+        <button @click="tab='income'" :class="{active: tab==='income'}">Ienemumi</button>
+        <button @click="tab='expense'" :class="{active: tab==='expense'}">Izdevumi</button>
+        <button @click="tab='history'" :class="{active: tab==='history'}">Vesture</button>
+        <button v-if="canManageMembers" @click="tab='members'" :class="{active: tab==='members'}">Biedri</button>
+        <button v-if="canManagePeriod" @click="tab='period'" :class="{active: tab==='period'}">Periods</button>
+      </nav>
+
+      <section class="card" v-if="tab==='income' && canWriteIncome">
+        <h3>Citi ienemumi</h3>
+        <label>Summa EUR</label>
+        <input v-model="forms.otherIncome.amount" type="number" step="0.01" />
+        <label>Datums</label>
+        <input v-model="forms.otherIncome.entry_date" type="date" />
+        <label>Apraksts</label>
+        <input v-model="forms.otherIncome.description" />
+        <button @click="addOtherIncome">Pievienot ienemumu</button>
+
+        <hr />
+        <h3>Biedra naudas iemaksa</h3>
+        <label>Biedrs</label>
+        <select v-model="forms.memberPayment.member_id">
+          <option disabled value="">Izvelies biedru</option>
+          <option v-for="m in members" :value="m.id">{{ m.list_no }}. {{ m.first_name }} {{ m.last_name }} ({{ m.paid_this_period.toFixed(2) }}/{{ m.membership_fee.toFixed(2) }})</option>
+        </select>
+        <label>Summa EUR</label>
+        <input v-model="forms.memberPayment.amount" type="number" step="0.01" />
+        <label>Datums</label>
+        <input v-model="forms.memberPayment.entry_date" type="date" />
+        <button @click="addMemberPayment">Pievienot iemaksu</button>
+      </section>
+
+      <section class="card" v-if="tab==='expense' && canWriteExpense">
+        <h3>Pievienot izdevumus</h3>
+        <label>Kategorija</label>
+        <select v-model="forms.expense.category">
+          <option disabled value="">Izvelies kategoriju</option>
+          <option v-for="c in config.expense_categories" :value="c">{{ c }}</option>
+        </select>
+        <label>Summa EUR</label>
+        <input v-model="forms.expense.amount" type="number" step="0.01" />
+        <label>Datums</label>
+        <input v-model="forms.expense.entry_date" type="date" />
+        <label>Apraksts</label>
+        <input v-model="forms.expense.description" />
+        <label>Pievienot fails (neobligati)</label>
+        <input type="file" @change="onFileChange" />
+        <button @click="addExpense">Saglabat izdevumus</button>
+      </section>
+
+      <section class="card" v-if="tab==='history'">
+        <div class="history-head">
+          <h3>Parskata perioda vesture</h3>
+          <button @click="exportBalance">Eksportet bilanci</button>
+        </div>
+
+        <h4>Ienemumi</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Datums</th><th>Tips</th><th>Biedrs</th><th>Summa</th><th>Apraksts</th></tr></thead>
+            <tbody>
+              <tr v-for="i in history.incomes">
+                <td>{{ i.entry_date }}</td>
+                <td>{{ i.type }}</td>
+                <td>{{ i.member_name }}</td>
+                <td>{{ i.amount.toFixed(2) }}</td>
+                <td>{{ i.description }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Izdevumi</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Datums</th><th>Kategorija</th><th>Summa</th><th>Apraksts</th><th>Fails</th></tr></thead>
+            <tbody>
+              <tr v-for="e in history.expenses">
+                <td>{{ e.entry_date }}</td>
+                <td>{{ e.category }}</td>
+                <td>{{ e.amount.toFixed(2) }}</td>
+                <td>{{ e.description }}</td>
+                <td><a v-if="e.attachment" :href="attachmentUrl(e.attachment)" target="_blank">Atvert</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" v-if="tab==='members' && canManageMembers">
+        <h3>Biedribu biedri</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nr</th><th>Vards</th><th>Uzvards</th><th>Telefons</th><th>Statuss</th><th>Loma</th><th>Maksa</th><th>Darbibas</th></tr></thead>
+            <tbody>
+              <tr v-for="m in members" :key="m.id">
+                <td>{{ m.list_no }}</td>
+                <td><input v-model="m.first_name" /></td>
+                <td><input v-model="m.last_name" /></td>
+                <td><input v-model="m.phone" maxlength="8" /></td>
+                <td><input v-model="m.status" /></td>
+                <td><input v-model="m.role" :disabled="user.role !== 'admin'" /></td>
+                <td><input v-model.number="m.membership_fee" type="number" step="0.01" /></td>
+                <td>
+                  <button @click="saveMember(m)">Saglabat</button>
+                  <button class="danger" @click="removeMember(m.id)">Dzest</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Pievienot biedru</h4>
+        <div class="inline-grid">
+          <input v-model="forms.member.first_name" placeholder="Vards" />
+          <input v-model="forms.member.last_name" placeholder="Uzvards" />
+          <input v-model="forms.member.phone" maxlength="8" placeholder="Telefons" />
+          <input v-model="forms.member.status" placeholder="Statuss" />
+          <input v-model.number="forms.member.membership_fee" type="number" step="0.01" placeholder="Biedra maksa" />
+          <input v-model="forms.member.role" placeholder="Loma" :disabled="user.role !== 'admin'" />
+        </div>
+        <button @click="addMember">Pievienot biedru</button>
+      </section>
+
+      <section class="card" v-if="tab==='period' && canManagePeriod">
+        <h3>Parskata periods</h3>
+        <label>Sezona (yyyy/yyyy)</label>
+        <input v-model="forms.period.season_label" placeholder="2026/2027" />
+        <label>Biedra maksa sezona (pec izveles)</label>
+        <input v-model="forms.period.default_membership_fee" type="number" step="0.01" />
+        <button @click="setPeriod">Saglabat periodu</button>
+
+        <hr />
+
+        <label>Atlikums no iepriekseja perioda EUR (var but negativs)</label>
+        <input v-model="forms.period.carry_over" type="number" step="0.01" />
+        <button @click="setCarryOver">Saglabat atlikumu</button>
+      </section>
+
+      <p class="message" v-if="successMessage">{{ successMessage }}</p>
+      <p class="error" v-if="errorMessage">{{ errorMessage }}</p>
+    </main>
+    {% endraw %}
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
