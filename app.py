@@ -134,6 +134,15 @@ def get_or_create_period_lock(season_label):
     return period_lock
 
 
+def get_period_for_request():
+    season_label = (request.args.get("season_label") or "").strip()
+    if season_label:
+        period = Period.query.filter_by(season_label=season_label).order_by(Period.id.desc()).first()
+        if period:
+            return period
+    return current_period()
+
+
 def period_totals(period):
     income_sum = db.session.query(db.func.coalesce(db.func.sum(Income.amount), 0)).filter(
         Income.entry_date >= period.start_date,
@@ -351,7 +360,7 @@ def logout():
 @app.route("/api/dashboard")
 @token_required()
 def dashboard():
-    period = current_period()
+    period = get_period_for_request()
     totals = period_totals(period)
 
     return jsonify(
@@ -370,7 +379,7 @@ def dashboard():
 @app.route("/api/members", methods=["GET"])
 @token_required({"board", "admin", "auditor", "cashier", "member"})
 def list_members():
-    period = current_period()
+    period = get_period_for_request()
     members = Member.query.order_by(Member.list_no).all()
 
     paid_rows = (
@@ -482,7 +491,7 @@ def delete_member(member_id):
 
 
 @app.route("/api/members/<int:member_id>/payment", methods=["POST"])
-@token_required({"cashier", "board", "admin"})
+@token_required({"cashier", "admin"})
 def record_member_payment(member_id):
     member = db.session.get(Member, member_id)
     if not member:
@@ -515,7 +524,7 @@ def record_member_payment(member_id):
 
 
 @app.route("/api/incomes", methods=["POST"])
-@token_required({"cashier", "board", "admin"})
+@token_required({"cashier", "admin"})
 def add_other_income():
     data = request.get_json() or {}
     amount = to_decimal(data.get("amount", 0) or 0)
@@ -537,7 +546,7 @@ def add_other_income():
 
 
 @app.route("/api/expenses", methods=["POST"])
-@token_required({"cashier", "board", "admin", "member"})
+@token_required({"cashier", "admin", "member"})
 def add_expense():
     category = (request.form.get("category") or "").strip()
     amount_raw = request.form.get("amount", "0")
@@ -579,7 +588,7 @@ def add_expense():
 @app.route("/api/history")
 @token_required({"cashier", "board", "admin", "auditor"})
 def history():
-    period = current_period()
+    period = get_period_for_request()
 
     incomes = Income.query.filter(
         Income.entry_date >= period.start_date,
@@ -627,6 +636,40 @@ def get_attachment(filename):
     return send_from_directory(UPLOAD_DIR, filename, as_attachment=False)
 
 
+@app.route("/api/periods/available")
+@token_required()
+def available_periods():
+    locked_seasons = {
+        lock.season_label
+        for lock in PeriodLock.query.filter_by(
+            membership_fee_locked=True,
+            carry_over_locked=True,
+        ).all()
+    }
+
+    periods = (
+        Period.query.filter(Period.season_label.in_(locked_seasons))
+        .order_by(Period.start_date.desc())
+        .all()
+    )
+
+    unique = []
+    seen = set()
+    for period in periods:
+        if period.season_label in seen:
+            continue
+        seen.add(period.season_label)
+        unique.append(
+            {
+                "season_label": period.season_label,
+                "start_date": period.start_date.isoformat(),
+                "end_date": period.end_date.isoformat(),
+            }
+        )
+
+    return jsonify({"periods": unique})
+
+
 @app.route("/api/period", methods=["POST"])
 @token_required({"board", "admin"})
 def update_period():
@@ -665,9 +708,6 @@ def update_period():
         if current_user_role == "board":
             period_lock.membership_fee_locked = True
 
-    if current_user_role == "admin" and not period_lock.membership_fee_locked and default_membership_fee > 0:
-        period_lock.membership_fee_locked = True
-
     db.session.commit()
     return jsonify({"message": "Parskata periods atjaunots"})
 
@@ -686,7 +726,7 @@ def set_carryover():
 
     period.carry_over = carry_over
 
-    if current_user_role in {"board", "admin"}:
+    if current_user_role == "board":
         period_lock.carry_over_locked = True
 
     db.session.commit()
@@ -697,7 +737,7 @@ def set_carryover():
 @app.route("/api/export")
 @token_required({"cashier", "board", "admin", "auditor"})
 def export_balance():
-    period = current_period()
+    period = get_period_for_request()
     totals = period_totals(period)
 
     incomes = Income.query.filter(

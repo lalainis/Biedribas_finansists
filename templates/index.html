@@ -50,7 +50,15 @@
 
     <main class="shell" v-else>
       <section class="dashboard card">
-        <h2>Aktualais stavoklis</h2>
+        <div class="history-head">
+          <h2>Aktualais stavoklis</h2>
+          <div>
+            <label for="season-select">Sezona</label>
+            <select id="season-select" v-model="selectedSeason" @change="onSeasonChange">
+              <option v-for="p in availablePeriods" :key="p.season_label" :value="p.season_label">{{ p.season_label }}</option>
+            </select>
+          </div>
+        </div>
         <div class="stats">
           <article>
             <small>Ienemumi EUR</small>
@@ -71,8 +79,8 @@
       </section>
 
       <nav class="tabs card">
-        <button @click="tab='income'" :class="{active: tab==='income'}">Ienemumi</button>
-        <button @click="tab='expense'" :class="{active: tab==='expense'}">Izdevumi</button>
+        <button v-if="canWriteIncome" @click="tab='income'" :class="{active: tab==='income'}">Ienemumi</button>
+        <button v-if="canWriteExpense" @click="tab='expense'" :class="{active: tab==='expense'}">Izdevumi</button>
         <button @click="tab='history'" :class="{active: tab==='history'}">Vesture</button>
         <button @click="tab='member-list'" :class="{active: tab==='member-list'}">Biedru saraksts</button>
         <button v-if="canManageMembers" @click="tab='members'" :class="{active: tab==='members'}">Biedri</button>

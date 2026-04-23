@@ -16,6 +16,8 @@ createApp({
         period: { season_label: "", start_date: "", end_date: "" },
         totals: { income_total: 0, expense_total: 0, difference: 0 },
       },
+      availablePeriods: [],
+      selectedSeason: "",
       config: {
         expense_categories: [],
       },
@@ -35,10 +37,10 @@ createApp({
   },
   computed: {
     canWriteIncome() {
-      return ["cashier", "board", "admin"].includes(this.user?.role);
+      return ["cashier", "admin"].includes(this.user?.role);
     },
     canWriteExpense() {
-      return ["cashier", "board", "admin", "member"].includes(this.user?.role);
+      return ["cashier", "admin", "member"].includes(this.user?.role);
     },
     canManageMembers() {
       return ["board", "admin"].includes(this.user?.role);
@@ -135,21 +137,41 @@ createApp({
       this.errorMessage = "";
     },
     async loadDashboard() {
-      this.dashboard = await this.api("/api/dashboard");
+      const seasonQuery = this.selectedSeason ? `?season_label=${encodeURIComponent(this.selectedSeason)}` : "";
+      this.dashboard = await this.api(`/api/dashboard${seasonQuery}`);
       this.forms.period.season_label = this.dashboard.period.season_label;
       this.forms.period.carry_over = this.dashboard.period.carry_over;
+      if (!this.selectedSeason) {
+        this.selectedSeason = this.dashboard.period.season_label;
+      }
+    },
+    async loadAvailablePeriods() {
+      const data = await this.api("/api/periods/available");
+      this.availablePeriods = data.periods || [];
+      if (!this.selectedSeason && this.availablePeriods.length > 0) {
+        this.selectedSeason = this.availablePeriods[0].season_label;
+      }
     },
     async loadMembers() {
       if (!this.token) return;
-      this.members = await this.api("/api/members");
+      const seasonQuery = this.selectedSeason ? `?season_label=${encodeURIComponent(this.selectedSeason)}` : "";
+      this.members = await this.api(`/api/members${seasonQuery}`);
     },
     async loadHistory() {
       if (!["cashier", "board", "admin", "auditor"].includes(this.user?.role)) return;
-      this.history = await this.api("/api/history");
+      const seasonQuery = this.selectedSeason ? `?season_label=${encodeURIComponent(this.selectedSeason)}` : "";
+      this.history = await this.api(`/api/history${seasonQuery}`);
+    },
+    async onSeasonChange() {
+      if (!this.token) return;
+      await this.loadDashboard();
+      await this.loadMembers();
+      await this.loadHistory();
     },
     async refreshAll() {
       await this.loadConfig();
       if (this.token) {
+        await this.loadAvailablePeriods();
         await this.loadDashboard();
         await this.loadMembers();
         await this.loadHistory();
@@ -328,7 +350,8 @@ createApp({
     async exportBalance() {
       this.resetMessages();
       try {
-        const res = await fetch("/api/export", {
+        const seasonQuery = this.selectedSeason ? `?season_label=${encodeURIComponent(this.selectedSeason)}` : "";
+        const res = await fetch(`/api/export${seasonQuery}`, {
           headers: { Authorization: `Bearer ${this.token}` },
         });
         if (!res.ok) {
