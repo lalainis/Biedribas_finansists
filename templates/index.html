@@ -209,6 +209,7 @@
                 <td><input v-model.number="m.membership_fee" type="number" step="0.01" /></td>
                 <td>
                   <button @click="saveMember(m)">Saglabāt</button>
+                  <button v-if="user.role === 'admin'" class="ghost" :disabled="!m.has_pin" @click="clearMemberPin(m.id)">Dzēst PIN</button>
                   <button class="danger" @click="removeMember(m.id)">Dzēst</button>
                 </td>
               </tr>

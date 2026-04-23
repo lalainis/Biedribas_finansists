@@ -183,6 +183,7 @@ def member_to_dict(member, paid_this_period_override=None):
         "membership_fee": float(member.membership_fee),
         "paid_this_period": paid_this_period,
         "role": normalized_role,
+        "has_pin": member.pin_hash is not None,
     }
 
 
@@ -388,7 +389,7 @@ def list_members():
             db.func.coalesce(db.func.sum(Income.amount), 0),
         )
         .filter(
-            Income.income_type == "member_fee",
+            Income.income_type == "biedra nauda",
             Income.member_id.isnot(None),
             Income.entry_date >= period.start_date,
             Income.entry_date <= period.end_date,
@@ -490,6 +491,22 @@ def delete_member(member_id):
     return jsonify({"message": "Biedrs izdzēsts"})
 
 
+@app.route("/api/members/<int:member_id>/pin", methods=["DELETE"])
+@token_required({"admin"})
+def clear_member_pin(member_id):
+    member = db.session.get(Member, member_id)
+    if not member:
+        return jsonify({"error": "Biedrs nav atrasts"}), 404
+
+    if member.pin_hash is None:
+        return jsonify({"error": "PIN kods jau ir dzests"}), 409
+
+    member.pin_hash = None
+    db.session.commit()
+
+    return jsonify({"message": "PIN kods izdzests"})
+
+
 @app.route("/api/members/<int:member_id>/payment", methods=["POST"])
 @token_required({"cashier", "admin"})
 def record_member_payment(member_id):
@@ -535,7 +552,7 @@ def add_other_income():
         return jsonify({"error": "Summai jābūt lielākai par 0"}), 400
 
     income = Income(
-        income_type="other",
+        income_type="neplānots ienākums",
         amount=amount,
         entry_date=entry_date,
         description=description,

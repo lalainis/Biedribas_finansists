@@ -316,6 +316,16 @@ createApp({
         this.errorMessage = err.message;
       }
     },
+    async clearMemberPin(memberId) {
+      this.resetMessages();
+      try {
+        await this.api(`/api/members/${memberId}/pin`, { method: "DELETE" });
+        this.successMessage = "PIN kods izdzests";
+        await this.loadMembers();
+      } catch (err) {
+        this.errorMessage = err.message;
+      }
+    },
     async setPeriod() {
       this.resetMessages();
       try {
