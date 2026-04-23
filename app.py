@@ -44,6 +44,10 @@ EXPENSE_CATEGORIES = [
     "Internets",
     "Elektrība",
     "Apdrošināšana",
+    "Pļaušanas izdevumi",
+    "Bebru uzraudzības izdevumi",
+    "LMS biedru maksa",
+    "Bankas komisijas maksa",
     "Citi",
 ]
 
