@@ -37,7 +37,7 @@ ROLES = {"cashier", "board", "auditor", "admin", "member"}
 EXPENSE_CATEGORIES = [
     "Saimnieciskie izdevumi",
     "Būvmateriāli",
-    "Piebārsošana",
+    "Piebarošana",
     "Nodokļi",
     "Licences",
     "Platību maksājumi",
@@ -72,6 +72,13 @@ class Period(db.Model):
     end_date = db.Column(db.Date, nullable=False)
     carry_over = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     active = db.Column(db.Boolean, nullable=False, default=True)
+
+
+class PeriodLock(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    season_label = db.Column(db.String(9), unique=True, nullable=False)
+    membership_fee_locked = db.Column(db.Boolean, nullable=False, default=False)
+    carry_over_locked = db.Column(db.Boolean, nullable=False, default=False)
 
 
 class Income(db.Model):
@@ -116,6 +123,17 @@ def current_period():
     return period
 
 
+def get_or_create_period_lock(season_label):
+    period_lock = PeriodLock.query.filter_by(season_label=season_label).first()
+    if period_lock:
+        return period_lock
+
+    period_lock = PeriodLock(season_label=season_label)
+    db.session.add(period_lock)
+    db.session.flush()
+    return period_lock
+
+
 def period_totals(period):
     income_sum = db.session.query(db.func.coalesce(db.func.sum(Income.amount), 0)).filter(
         Income.entry_date >= period.start_date,
@@ -139,8 +157,13 @@ def period_totals(period):
     }
 
 
-def member_to_dict(member):
+def member_to_dict(member, paid_this_period_override=None):
     normalized_role = normalize_role(member.role)
+    paid_this_period = (
+        float(paid_this_period_override)
+        if paid_this_period_override is not None
+        else float(member.paid_this_period)
+    )
     return {
         "id": member.id,
         "list_no": member.list_no,
@@ -149,7 +172,7 @@ def member_to_dict(member):
         "phone": member.phone,
         "status": member.status,
         "membership_fee": float(member.membership_fee),
-        "paid_this_period": float(member.paid_this_period),
+        "paid_this_period": paid_this_period,
         "role": normalized_role,
     }
 
@@ -236,6 +259,11 @@ def ensure_seed_data():
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/assets/<path:filename>")
+def asset_file(filename):
+    return send_from_directory(BASE_DIR, filename)
 
 
 @app.route("/api/config")
@@ -340,10 +368,36 @@ def dashboard():
 
 
 @app.route("/api/members", methods=["GET"])
-@token_required({"board", "admin", "auditor", "cashier"})
+@token_required({"board", "admin", "auditor", "cashier", "member"})
 def list_members():
+    period = current_period()
     members = Member.query.order_by(Member.list_no).all()
-    return jsonify([member_to_dict(m) for m in members])
+
+    paid_rows = (
+        db.session.query(
+            Income.member_id,
+            db.func.coalesce(db.func.sum(Income.amount), 0),
+        )
+        .filter(
+            Income.income_type == "member_fee",
+            Income.member_id.isnot(None),
+            Income.entry_date >= period.start_date,
+            Income.entry_date <= period.end_date,
+        )
+        .group_by(Income.member_id)
+        .all()
+    )
+    paid_map = {member_id: total for member_id, total in paid_rows}
+
+    return jsonify(
+        [
+            member_to_dict(
+                m,
+                paid_this_period_override=paid_map.get(m.id, 0),
+            )
+            for m in members
+        ]
+    )
 
 
 @app.route("/api/members", methods=["POST"])
@@ -579,6 +633,11 @@ def update_period():
     data = request.get_json() or {}
     season_label = (data.get("season_label") or "").strip()
     default_membership_fee = to_decimal(data.get("default_membership_fee", 0) or 0)
+    current_user_role = normalize_role(request.current_user.role)
+
+    period_lock = get_or_create_period_lock(season_label)
+    if current_user_role == "board" and period_lock.membership_fee_locked:
+        return jsonify({"error": "Saja perioda biedra maksu pec pirmas saglabasanas var mainit tikai admin"}), 403
 
     if len(season_label) != 9 or "/" not in season_label:
         return jsonify({"error": "Sezonas formatam jabut yyyy/yyyy"}), 400
@@ -603,6 +662,12 @@ def update_period():
             member.membership_fee = default_membership_fee
             member.paid_this_period = 0
 
+        if current_user_role == "board":
+            period_lock.membership_fee_locked = True
+
+    if current_user_role == "admin" and not period_lock.membership_fee_locked and default_membership_fee > 0:
+        period_lock.membership_fee_locked = True
+
     db.session.commit()
     return jsonify({"message": "Parskata periods atjaunots"})
 
@@ -612,9 +677,18 @@ def update_period():
 def set_carryover():
     data = request.get_json() or {}
     carry_over = to_decimal(data.get("carry_over", 0) or 0)
+    current_user_role = normalize_role(request.current_user.role)
 
     period = current_period()
+    period_lock = get_or_create_period_lock(period.season_label)
+    if current_user_role == "board" and period_lock.carry_over_locked:
+        return jsonify({"error": "Saja perioda atlikumu pec pirmas saglabasanas var mainit tikai admin"}), 403
+
     period.carry_over = carry_over
+
+    if current_user_role in {"board", "admin"}:
+        period_lock.carry_over_locked = True
+
     db.session.commit()
 
     return jsonify({"message": "Atlikums no iepriekseja perioda saglabats"})

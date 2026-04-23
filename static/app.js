@@ -140,7 +140,7 @@ createApp({
       this.forms.period.carry_over = this.dashboard.period.carry_over;
     },
     async loadMembers() {
-      if (!["board", "admin", "auditor", "cashier"].includes(this.user?.role)) return;
+      if (!this.token) return;
       this.members = await this.api("/api/members");
     },
     async loadHistory() {

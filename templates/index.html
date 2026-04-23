@@ -11,6 +11,7 @@
 </head>
 <body>
   <div id="app">
+    <img class="corner-logo" src="/assets/MB%20Milgravis.png" alt="MB Milgravis logo" />
     {% raw %}
     <header class="topbar">
       <h1>Biedrības Finansists</h1>
@@ -73,9 +74,29 @@
         <button @click="tab='income'" :class="{active: tab==='income'}">Ienemumi</button>
         <button @click="tab='expense'" :class="{active: tab==='expense'}">Izdevumi</button>
         <button @click="tab='history'" :class="{active: tab==='history'}">Vesture</button>
+        <button @click="tab='member-list'" :class="{active: tab==='member-list'}">Biedru saraksts</button>
         <button v-if="canManageMembers" @click="tab='members'" :class="{active: tab==='members'}">Biedri</button>
         <button v-if="canManagePeriod" @click="tab='period'" :class="{active: tab==='period'}">Periods</button>
       </nav>
+
+      <section class="card" v-if="tab==='member-list'">
+        <h3>Biedru saraksts</h3>
+        <p class="muted">Iemaksas pārskata periodā: {{ dashboard.period.season_label }}</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Iemaksāts periodā (EUR)</th></tr></thead>
+            <tbody>
+              <tr v-for="m in members" :key="m.id">
+                <td>{{ m.list_no }}</td>
+                <td>{{ m.first_name }}</td>
+                <td>{{ m.last_name }}</td>
+                <td>{{ m.phone }}</td>
+                <td>{{ m.paid_this_period.toFixed(2) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section class="card" v-if="tab==='income' && canWriteIncome">
         <h3>Citi ieņēmumi</h3>

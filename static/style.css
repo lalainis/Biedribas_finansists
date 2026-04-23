@@ -24,7 +24,18 @@ body {
 #app {
   width: min(1150px, 94vw);
   margin: 0 auto;
-  padding: 20px 0 32px;
+  padding: 92px 0 32px;
+  position: relative;
+}
+
+.corner-logo {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  width: clamp(88px, 9vw, 132px);
+  height: auto;
+  z-index: 10;
+  filter: drop-shadow(0 10px 22px rgba(23, 48, 66, 0.25));
 }
 
 .topbar {
@@ -203,6 +214,13 @@ hr {
 @media (max-width: 640px) {
   #app {
     width: 96vw;
+    padding-top: 74px;
+  }
+
+  .corner-logo {
+    top: 8px;
+    right: 8px;
+    width: clamp(62px, 18vw, 92px);
   }
 
   .card {
