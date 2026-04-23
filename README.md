@@ -7,7 +7,7 @@ Flask + Vue.js + PostgreSQL aplikacija biedribas ieņēmumu un izdevumu uzskaite
 - Python 3.11+
 - PostgreSQL
 
-## Palesana
+## Palaisana
 
 1. Izveido `.env` no `.env.example`.
 2. Uzstadi pakotnes:
