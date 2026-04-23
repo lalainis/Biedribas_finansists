@@ -292,6 +292,8 @@ def auth_init():
     user = Member.query.filter_by(phone=phone).first()
     if not user:
         return jsonify({"error": "Jūs neesat biedrs"}), 404
+    if normalize_role(user.role) == "member":
+        return jsonify({"error": "Jums nav tiesību ienākt."}), 403
 
     return jsonify({"needs_pin_setup": user.pin_hash is None})
 
@@ -313,6 +315,8 @@ def setup_pin():
     user = Member.query.filter_by(phone=phone).first()
     if not user:
         return jsonify({"error": "Jūs neesat biedrs"}), 404
+    if normalize_role(user.role) == "member":
+        return jsonify({"error": "Jums nav tiesību ienākt."}), 403
     if user.pin_hash:
         return jsonify({"error": "PIN kods jau ir uzstādīts"}), 409
 
@@ -333,6 +337,8 @@ def login():
     user = Member.query.filter_by(phone=phone).first()
     if not user:
         return jsonify({"error": "Jūs neesat biedrs"}), 404
+    if normalize_role(user.role) == "member":
+        return jsonify({"error": "Jums nav tiesību ienākt."}), 403
     if not user.pin_hash:
         return jsonify({"error": "Lūdzu vispirms uzstādiet PIN kodu"}), 409
     if not validate_pin(pin) or not check_password_hash(user.pin_hash, pin):
@@ -389,7 +395,7 @@ def list_members():
             db.func.coalesce(db.func.sum(Income.amount), 0),
         )
         .filter(
-            Income.income_type == "biedra nauda",
+            Income.income_type.in_(["member_fee", "biedra nauda"]),
             Income.member_id.isnot(None),
             Income.entry_date >= period.start_date,
             Income.entry_date <= period.end_date,
