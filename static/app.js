@@ -214,6 +214,43 @@ createApp({
     attachmentUrl(filename) {
       return `/api/attachments/${filename}`;
     },
+    async openAttachment(filename) {
+      this.resetMessages();
+      let previewWindow = null;
+
+      try {
+        previewWindow = window.open("", "_blank");
+
+        const response = await fetch(this.attachmentUrl(filename), {
+          headers: { Authorization: `Bearer ${this.token}` },
+        });
+
+        if (!response.ok) {
+          let message = "Neizdevas atvert pielikumu";
+          try {
+            const data = await response.json();
+            message = data.error || message;
+          } catch (_) {}
+          throw new Error(message);
+        }
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+
+        if (previewWindow) {
+          previewWindow.location.href = blobUrl;
+        } else {
+          window.open(blobUrl, "_blank");
+        }
+
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      } catch (err) {
+        if (previewWindow) {
+          previewWindow.close();
+        }
+        this.errorMessage = err.message;
+      }
+    },
     async addMember() {
       this.resetMessages();
       try {

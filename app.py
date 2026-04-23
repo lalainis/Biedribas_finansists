@@ -36,14 +36,14 @@ TOKENS = {}
 ROLES = {"cashier", "board", "auditor", "admin", "member"}
 EXPENSE_CATEGORIES = [
     "Saimnieciskie izdevumi",
-    "Buvmateriali",
-    "Piebarosana",
-    "Nodokli",
+    "Būvmateriāli",
+    "Piebārsošana",
+    "Nodokļi",
     "Licences",
-    "Platibu maksajumi",
+    "Platību maksājumi",
     "Internets",
-    "Elektriba",
-    "Apdrosinasana",
+    "Elektrība",
+    "Apdrošināšana",
     "Citi",
 ]
 
@@ -136,6 +136,7 @@ def period_totals(period):
 
 
 def member_to_dict(member):
+    normalized_role = normalize_role(member.role)
     return {
         "id": member.id,
         "list_no": member.list_no,
@@ -145,8 +146,26 @@ def member_to_dict(member):
         "status": member.status,
         "membership_fee": float(member.membership_fee),
         "paid_this_period": float(member.paid_this_period),
-        "role": member.role,
+        "role": normalized_role,
     }
+
+
+def normalize_role(raw_role):
+    role = str(raw_role or "").strip().lower()
+    aliases = {
+        "kasieris": "cashier",
+        "cashier": "cashier",
+        "valde": "board",
+        "board": "board",
+        "revizors": "auditor",
+        "auditors": "auditor",
+        "auditor": "auditor",
+        "admins": "admin",
+        "admin": "admin",
+        "biedrs": "member",
+        "member": "member",
+    }
+    return aliases.get(role, role)
 
 
 def token_required(allowed_roles=None):
@@ -159,14 +178,15 @@ def token_required(allowed_roles=None):
             token = auth.replace("Bearer ", "").strip()
             user_id = TOKENS.get(token)
             if not user_id:
-                return jsonify({"error": "Nepieciesama autorizacija"}), 401
+                return jsonify({"error": "Nepieciešama autorizācija"}), 401
 
             user = db.session.get(Member, user_id)
             if not user:
-                return jsonify({"error": "Lietotajs nav atrasts"}), 401
+                return jsonify({"error": "Lietotājs nav atrasts"}), 401
 
-            if user.role not in allowed_roles:
-                return jsonify({"error": "Nepietiekamas tiesibas"}), 403
+            user_role = normalize_role(user.role)
+            if user_role not in allowed_roles:
+                return jsonify({"error": "Nepietiekamas tiesības"}), 403
 
             request.current_user = user
             return fn(*args, **kwargs)
@@ -225,11 +245,11 @@ def auth_init():
     phone = (data.get("phone") or "").strip()
 
     if not validate_phone(phone):
-        return jsonify({"error": "Telefona Nr. jabut ar 8 cipariem"}), 400
+        return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
 
     user = Member.query.filter_by(phone=phone).first()
     if not user:
-        return jsonify({"error": "Jus neesat biedrs"}), 404
+        return jsonify({"error": "Jūs neesat biedrs"}), 404
 
     return jsonify({"needs_pin_setup": user.pin_hash is None})
 
@@ -242,21 +262,21 @@ def setup_pin():
     pin_confirm = (data.get("pin_confirm") or "").strip()
 
     if not validate_phone(phone):
-        return jsonify({"error": "Telefona Nr. jabut ar 8 cipariem"}), 400
+        return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
     if not validate_pin(pin):
-        return jsonify({"error": "PIN kodam jabut tiesi 4 cipari"}), 400
+        return jsonify({"error": "PIN kodam jābūt ar 4 cipariem"}), 400
     if pin != pin_confirm:
-        return jsonify({"error": "PIN kodi nesakrit"}), 400
+        return jsonify({"error": "PIN kodi nesakrīt"}), 400
 
     user = Member.query.filter_by(phone=phone).first()
     if not user:
-        return jsonify({"error": "Jus neesat biedrs"}), 404
+        return jsonify({"error": "Jūs neesat biedrs"}), 404
     if user.pin_hash:
-        return jsonify({"error": "PIN kods jau ir uzstadits"}), 409
+        return jsonify({"error": "PIN kods jau ir uzstādīts"}), 409
 
     user.pin_hash = generate_password_hash(pin)
     db.session.commit()
-    return jsonify({"message": "PIN kods veiksmigi saglabats"})
+    return jsonify({"message": "PIN kods veiksmīgi saglabāts"})
 
 
 @app.route("/api/auth/login", methods=["POST"])
@@ -266,13 +286,13 @@ def login():
     pin = (data.get("pin") or "").strip()
 
     if not validate_phone(phone):
-        return jsonify({"error": "Telefona Nr. jabut ar 8 cipariem"}), 400
+        return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
 
     user = Member.query.filter_by(phone=phone).first()
     if not user:
-        return jsonify({"error": "Jus neesat biedrs"}), 404
+        return jsonify({"error": "Jūs neesat biedrs"}), 404
     if not user.pin_hash:
-        return jsonify({"error": "Ludzu vispirms uzstadiet PIN kodu"}), 409
+        return jsonify({"error": "Lūdzu vispirms uzstādiet PIN kodu"}), 409
     if not validate_pin(pin) or not check_password_hash(user.pin_hash, pin):
         return jsonify({"error": "Nepareizs PIN kods"}), 401
 
@@ -293,7 +313,7 @@ def logout():
     auth = request.headers.get("Authorization", "")
     token = auth.replace("Bearer ", "").strip()
     TOKENS.pop(token, None)
-    return jsonify({"message": "Izrakstisanas izdevusies"})
+    return jsonify({"message": "Izrakstīšanās izdevusies"})
 
 
 @app.route("/api/dashboard")
@@ -328,14 +348,14 @@ def create_member():
     data = request.get_json() or {}
 
     phone = str(data.get("phone", "")).strip()
-    role = str(data.get("role", "member")).strip()
+    role = normalize_role(data.get("role", "member"))
 
     if not validate_phone(phone):
-        return jsonify({"error": "Telefona Nr. jabut ar 8 cipariem"}), 400
+        return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
     if Member.query.filter_by(phone=phone).first():
-        return jsonify({"error": "Lietotajs ar so telefona numuru jau eksiste"}), 409
+        return jsonify({"error": "Lietotājs ar šo telefona numuru jau eksistē"}), 409
     if role not in ROLES:
-        return jsonify({"error": "Nederiga loma"}), 400
+        return jsonify({"error": "Nederīga loma"}), 400
 
     member = Member(
         list_no=Member.query.count() + 1,
@@ -365,11 +385,11 @@ def update_member(member_id):
     phone = str(data.get("phone", member.phone)).strip()
 
     if not validate_phone(phone):
-        return jsonify({"error": "Telefona Nr. jabut ar 8 cipariem"}), 400
+        return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
 
     duplicate = Member.query.filter(Member.phone == phone, Member.id != member_id).first()
     if duplicate:
-        return jsonify({"error": "Telefona numurs jau aiznemts"}), 409
+        return jsonify({"error": "Telefona numurs jau aizņemts"}), 409
 
     member.first_name = str(data.get("first_name", member.first_name)).strip()
     member.last_name = str(data.get("last_name", member.last_name)).strip()
@@ -377,10 +397,10 @@ def update_member(member_id):
     member.status = str(data.get("status", member.status)).strip()
     member.membership_fee = to_decimal(data.get("membership_fee", member.membership_fee))
 
-    if request.current_user.role == "admin":
-        role = str(data.get("role", member.role)).strip()
+    if normalize_role(request.current_user.role) == "admin":
+        role = normalize_role(data.get("role", member.role))
         if role not in ROLES:
-            return jsonify({"error": "Nederiga loma"}), 400
+            return jsonify({"error": "Nederīga loma"}), 400
         member.role = role
 
     db.session.commit()
@@ -400,7 +420,7 @@ def delete_member(member_id):
     resequence_members()
     db.session.commit()
 
-    return jsonify({"message": "Biedrs izdzests"})
+    return jsonify({"message": "Biedrs izdzēsts"})
 
 
 @app.route("/api/members/<int:member_id>/payment", methods=["POST"])
@@ -415,7 +435,7 @@ def record_member_payment(member_id):
     entry_date = datetime.strptime(data.get("entry_date", date.today().isoformat()), "%Y-%m-%d").date()
 
     if amount <= 0:
-        return jsonify({"error": "Summai jabut lielakai par 0"}), 400
+        return jsonify({"error": "Summai jābūt lielākai par 0"}), 400
 
     income = Income(
         income_type="member_fee",
@@ -445,7 +465,7 @@ def add_other_income():
     description = str(data.get("description", "")).strip()
 
     if amount <= 0:
-        return jsonify({"error": "Summai jabut lielakai par 0"}), 400
+        return jsonify({"error": "Summai jābūt lielākai par 0"}), 400
 
     income = Income(
         income_type="other",
@@ -455,7 +475,7 @@ def add_other_income():
     )
     db.session.add(income)
     db.session.commit()
-    return jsonify({"message": "Ienemumi pievienoti"}), 201
+    return jsonify({"message": "Ieņēmumi pievienoti"}), 201
 
 
 @app.route("/api/expenses", methods=["POST"])
@@ -467,11 +487,11 @@ def add_expense():
     description = (request.form.get("description") or "").strip()
 
     if category not in EXPENSE_CATEGORIES:
-        return jsonify({"error": "Nederiga izdevumu kategorija"}), 400
+        return jsonify({"error": "Nederīga izdevumu kategorija"}), 400
 
     amount = to_decimal(amount_raw)
     if amount <= 0:
-        return jsonify({"error": "Summai jabut lielakai par 0"}), 400
+        return jsonify({"error": "Summai jābūt lielākai par 0"}), 400
 
     entry_date = datetime.strptime(entry_date_raw, "%Y-%m-%d").date()
 
@@ -631,7 +651,7 @@ def export_balance():
             ]
         )
 
-    ws_income.append(["Ienemumi kopa EUR", "", totals["income_total"], "", ""])
+    ws_income.append(["Ienemumi kopā EUR", "", totals["income_total"], "", ""])
 
     ws_expense = wb.create_sheet("Izdevumi")
     ws_expense.append(["Kategorija", "Summa EUR", "Datums", "Apraksts", "Pievienotais fails"])
@@ -647,16 +667,16 @@ def export_balance():
             ]
         )
 
-    ws_expense.append(["Izdevumi kopa EUR", totals["expense_total"], "", "", ""])
+    ws_expense.append(["Izdevumi kopā EUR", totals["expense_total"], "", "", ""])
 
     ws_summary = wb.create_sheet("Kopsavilkums")
-    ws_summary.append(["Parskata periods", period.season_label])
-    ws_summary.append(["Ienemumi EUR", totals["income_total"]])
+    ws_summary.append(["Pārskata periods", period.season_label])
+    ws_summary.append(["Ieņēmumi EUR", totals["income_total"]])
     ws_summary.append(["Izdevumi EUR", totals["expense_total"]])
     if totals["difference"] >= 0:
         ws_summary.append(["Atlikums EUR", totals["balance"]])
     else:
-        ws_summary.append(["Deficits EUR", totals["deficit"]])
+        ws_summary.append(["Deficīts EUR", totals["deficit"]])
 
     filename = f"bilance_{period.season_label.replace('/', '-')}.xlsx"
     file_path = BASE_DIR / filename

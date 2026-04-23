@@ -151,7 +151,13 @@
                 <td>{{ e.category }}</td>
                 <td>{{ e.amount.toFixed(2) }}</td>
                 <td>{{ e.description }}</td>
-                <td><a v-if="e.attachment" :href="attachmentUrl(e.attachment)" target="_blank">Atvert</a></td>
+                <td>
+                  <a
+                    v-if="e.attachment"
+                    href="#"
+                    @click.prevent="openAttachment(e.attachment)"
+                  >Atvert</a>
+                </td>
               </tr>
             </tbody>
           </table>
