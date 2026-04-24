@@ -13,9 +13,10 @@ from openpyxl import Workbook
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
-load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent
+load_dotenv()
+load_dotenv(BASE_DIR / "finan.env")
+
 UPLOAD_DIR = BASE_DIR / os.getenv("UPLOAD_DIR", "uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -863,4 +864,8 @@ if __name__ == "__main__":
         db.create_all()
         ensure_seed_data()
 
-    app.run(debug=True)
+    app.run(
+        host=os.getenv("FLASK_RUN_HOST", "0.0.0.0"),
+        port=int(os.getenv("FLASK_RUN_PORT", "5000")),
+        debug=os.getenv("FLASK_DEBUG", "1") == "1",
+    )
