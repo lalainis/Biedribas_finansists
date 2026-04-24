@@ -247,6 +247,21 @@ def resequence_members():
         member.list_no = index
 
 
+def ensure_unique_member_numbers():
+    members = Member.query.order_by(Member.list_no, Member.id).all()
+    changed = False
+    for index, member in enumerate(members, start=1):
+        if member.list_no != index:
+            member.list_no = index
+            changed = True
+    return changed
+
+
+def next_member_list_no():
+    current_max = db.session.query(db.func.coalesce(db.func.max(Member.list_no), 0)).scalar()
+    return int(current_max) + 1
+
+
 def ensure_seed_data():
     if Member.query.count() == 0:
         admin = Member(
@@ -386,8 +401,14 @@ def dashboard():
 @app.route("/api/members", methods=["GET"])
 @token_required({"board", "admin", "auditor", "cashier", "member"})
 def list_members():
+    if ensure_unique_member_numbers():
+        db.session.commit()
+
     period = get_period_for_request()
+    requester_role = normalize_role(request.current_user.role)
     members = Member.query.order_by(Member.list_no).all()
+    if requester_role != "admin":
+        members = [m for m in members if normalize_role(m.role) != "admin"]
 
     paid_rows = (
         db.session.query(
@@ -432,7 +453,7 @@ def create_member():
         return jsonify({"error": "Nederīga loma"}), 400
 
     member = Member(
-        list_no=Member.query.count() + 1,
+        list_no=next_member_list_no(),
         first_name=str(data.get("first_name", "")).strip() or "Vards",
         last_name=str(data.get("last_name", "")).strip() or "Uzvards",
         phone=phone,
@@ -612,6 +633,7 @@ def add_expense():
 @token_required({"cashier", "board", "admin", "auditor"})
 def history():
     period = get_period_for_request()
+    requester_role = normalize_role(request.current_user.role)
 
     incomes = Income.query.filter(
         Income.entry_date >= period.start_date,
@@ -626,11 +648,14 @@ def history():
     income_rows = []
     for row in incomes:
         member = db.session.get(Member, row.member_id) if row.member_id else None
+        member_name = ""
+        if member and (requester_role == "admin" or normalize_role(member.role) != "admin"):
+            member_name = f"{member.first_name} {member.last_name}"
         income_rows.append(
             {
                 "id": row.id,
                 "type": row.income_type,
-                "member_name": f"{member.first_name} {member.last_name}" if member else "",
+                "member_name": member_name,
                 "amount": float(row.amount),
                 "entry_date": row.entry_date.isoformat(),
                 "description": row.description or "",
@@ -761,6 +786,7 @@ def set_carryover():
 @token_required({"cashier", "board", "admin", "auditor"})
 def export_balance():
     period = get_period_for_request()
+    requester_role = normalize_role(request.current_user.role)
     totals = period_totals(period)
 
     incomes = Income.query.filter(
@@ -782,10 +808,13 @@ def export_balance():
 
     for row in incomes:
         member = db.session.get(Member, row.member_id) if row.member_id else None
+        member_name = ""
+        if member and (requester_role == "admin" or normalize_role(member.role) != "admin"):
+            member_name = f"{member.first_name} {member.last_name}"
         ws_income.append(
             [
                 row.income_type,
-                f"{member.first_name} {member.last_name}" if member else "",
+                member_name,
                 float(row.amount),
                 row.entry_date.isoformat(),
                 row.description or "",
