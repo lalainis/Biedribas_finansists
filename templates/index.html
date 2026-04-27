@@ -95,13 +95,14 @@
         <p class="muted">Iemaksas pārskata periodā: {{ dashboard.period.season_label }}</p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Iemaksāts periodā (EUR)</th></tr></thead>
+            <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Iestāšanās maksa</th><th>Iemaksāts periodā (EUR)</th></tr></thead>
             <tbody>
               <tr v-for="m in members" :key="m.id">
                 <td>{{ m.list_no }}</td>
                 <td>{{ m.first_name }}</td>
                 <td>{{ m.last_name }}</td>
                 <td>{{ m.phone }}</td>
+                <td>{{ m.joining_fee_paid ? 'Jā' : 'Nē' }}</td>
                 <td>{{ m.paid_this_period.toFixed(2) }}</td>
               </tr>
             </tbody>
@@ -200,7 +201,7 @@
         <h3>Biedrības biedri</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Statuss</th><th>Loma</th><th>Maksa</th><th>Darbības</th></tr></thead>
+            <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Statuss</th><th>Loma</th><th>Maksa</th><th>Iestāšanās maksa</th><th>Darbības</th></tr></thead>
             <tbody>
               <tr v-for="m in members" :key="m.id">
                 <td>{{ m.list_no }}</td>
@@ -210,6 +211,7 @@
                 <td><input v-model="m.status" /></td>
                 <td><input v-model="m.role" :disabled="user.role !== 'admin'" /></td>
                 <td><input v-model.number="m.membership_fee" type="number" step="0.01" /></td>
+                <td><input v-model="m.joining_fee_paid" type="checkbox" /></td>
                 <td>
                   <button @click="saveMember(m)">Saglabāt</button>
                   <button v-if="user.role === 'admin'" class="ghost" :disabled="!m.has_pin" @click="clearMemberPin(m.id)">Dzēst PIN</button>
@@ -227,6 +229,7 @@
           <input v-model="forms.member.phone" maxlength="8" placeholder="Telefons" />
           <input v-model="forms.member.status" placeholder="Statuss" />
           <input v-model.number="forms.member.membership_fee" type="number" step="0.01" placeholder="Biedra maksa" />
+          <label><input v-model="forms.member.joining_fee_paid" type="checkbox" /> Iestāšanās maksa samaksāta</label>
           <input v-model="forms.member.role" placeholder="Loma" :disabled="user.role !== 'admin'" />
         </div>
         <button @click="addMember">Pievienot biedru</button>

@@ -27,7 +27,7 @@ createApp({
         otherIncome: { amount: "", entry_date: new Date().toISOString().slice(0, 10), description: "" },
         memberPayment: { member_id: "", amount: "", entry_date: new Date().toISOString().slice(0, 10) },
         expense: { category: "", amount: "", entry_date: new Date().toISOString().slice(0, 10), description: "" },
-        member: { first_name: "", last_name: "", phone: "", status: "active", membership_fee: 0, role: "member" },
+        member: { first_name: "", last_name: "", phone: "", status: "active", membership_fee: 0, joining_fee_paid: false, role: "member" },
         period: { season_label: "", default_membership_fee: 0, carry_over: 0 },
       },
       selectedFile: null,
@@ -287,7 +287,7 @@ createApp({
           body: JSON.stringify(payload),
         });
         this.successMessage = "Biedrs pievienots";
-        this.forms.member = { first_name: "", last_name: "", phone: "", status: "active", membership_fee: 0, role: "member" };
+        this.forms.member = { first_name: "", last_name: "", phone: "", status: "active", membership_fee: 0, joining_fee_paid: false, role: "member" };
         await this.loadMembers();
       } catch (err) {
         this.errorMessage = err.message;

@@ -65,6 +65,7 @@ class Member(db.Model):
     status = db.Column(db.String(50), nullable=False, default="active")
     membership_fee = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     paid_this_period = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    joining_fee_paid = db.Column("Iestāšanās maksa", db.Boolean, nullable=False, default=False)
     role = db.Column(db.String(20), nullable=False, default="member")
     pin_hash = db.Column(db.String(255), nullable=True)
 
@@ -186,6 +187,7 @@ def member_to_dict(member, paid_this_period_override=None):
         "status": member.status,
         "membership_fee": float(member.membership_fee),
         "paid_this_period": paid_this_period,
+        "joining_fee_paid": bool(member.joining_fee_paid),
         "role": normalized_role,
         "has_pin": member.pin_hash is not None,
     }
@@ -243,6 +245,16 @@ def validate_phone(phone):
 
 def validate_pin(pin):
     return pin.isdigit() and len(pin) == 4
+
+
+def to_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on", "ja"}
+    return bool(value)
 
 
 def resequence_members():
@@ -464,6 +476,7 @@ def create_member():
         status=str(data.get("status", "active")).strip(),
         membership_fee=to_decimal(data.get("membership_fee", 0) or 0),
         paid_this_period=0,
+        joining_fee_paid=to_bool(data.get("joining_fee_paid", False)),
         role=role,
     )
 
@@ -495,6 +508,7 @@ def update_member(member_id):
     member.phone = phone
     member.status = str(data.get("status", member.status)).strip()
     member.membership_fee = to_decimal(data.get("membership_fee", member.membership_fee))
+    member.joining_fee_paid = to_bool(data.get("joining_fee_paid", member.joining_fee_paid))
 
     if normalize_role(request.current_user.role) == "admin":
         role = normalize_role(data.get("role", member.role))
