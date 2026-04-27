@@ -248,13 +248,9 @@
         <input v-model="forms.period.season_label" placeholder="2026/2027" />
         <label>Biedra maksa sezona (pēc izvēles)</label>
         <input v-model="forms.period.default_membership_fee" type="number" step="0.01" />
-        <button @click="setPeriod">Saglabāt periodu</button>
-
-        <hr />
-
         <label>Atlikums no iepriekšējā perioda EUR (var būt negatīvs)</label>
         <input v-model="forms.period.carry_over" type="number" step="0.01" />
-        <button @click="setCarryOver">Saglabāt atlikumu</button>
+        <button @click="setPeriod">Saglabāt sezonu, biedra naudu un atlikumu</button>
       </section>
 
       <p class="message" v-if="successMessage">{{ successMessage }}</p>

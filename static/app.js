@@ -79,7 +79,9 @@ createApp({
         data = await response.json();
       }
       if (!response.ok) {
-        throw new Error(data?.error || "Neizdevas izpildit pieprasijumu");
+        const error = new Error(data?.error || "Neizdevas izpildit pieprasijumu");
+        error.status = response.status;
+        throw error;
       }
       return data;
     },
@@ -107,8 +109,12 @@ createApp({
         });
         this.auth.step = data.needs_pin_setup ? "setup" : "login";
       } catch (err) {
-        this.auth.step = "login";
-        this.errorMessage = "";
+        if (err.status === 404) {
+          this.auth.step = "login";
+          this.errorMessage = "";
+          return;
+        }
+        this.errorMessage = err.message;
       }
     },
     async setupPin() {
@@ -303,7 +309,7 @@ createApp({
     async addMember() {
       this.resetMessages();
       try {
-        const payload = { ...this.forms.member };
+        const payload = { ...this.forms.member, season_label: this.selectedSeason || this.forms.period.season_label };
         if (this.user.role !== "admin") {
           delete payload.role;
         }
@@ -330,10 +336,11 @@ createApp({
     async saveMember(member) {
       this.resetMessages();
       try {
+        const payload = { ...member, season_label: this.selectedSeason || this.forms.period.season_label };
         await this.api(`/api/members/${member.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(member),
+          body: JSON.stringify(payload),
         });
         this.successMessage = "Biedra dati saglabati";
         await this.loadMembers();
@@ -370,23 +377,10 @@ createApp({
           body: JSON.stringify({
             season_label: this.forms.period.season_label,
             default_membership_fee: this.forms.period.default_membership_fee,
+            carry_over: this.forms.period.carry_over,
           }),
         });
         this.successMessage = "Parskata periods saglabats";
-        await this.refreshAll();
-      } catch (err) {
-        this.errorMessage = err.message;
-      }
-    },
-    async setCarryOver() {
-      this.resetMessages();
-      try {
-        await this.api("/api/period/carryover", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ carry_over: this.forms.period.carry_over }),
-        });
-        this.successMessage = "Atlikums saglabats";
         await this.refreshAll();
       } catch (err) {
         this.errorMessage = err.message;

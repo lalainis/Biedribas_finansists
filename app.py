@@ -75,6 +75,15 @@ class MemberStatus(db.Model):
     name = db.Column(db.String(80), unique=True, nullable=False)
 
 
+class MemberSeasonFee(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
+    season_label = db.Column(db.String(9), nullable=False)
+    membership_fee = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+
+    __table_args__ = (db.UniqueConstraint("member_id", "season_label", name="uq_member_season_fee"),)
+
+
 class Period(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     season_label = db.Column(db.String(9), nullable=False)
@@ -174,14 +183,17 @@ def period_totals(period):
         "balance": float(diff) if diff >= 0 else 0.0,
         "deficit": float(diff) if diff < 0 else 0.0,
     }
-
-
-def member_to_dict(member, paid_this_period_override=None):
+def member_to_dict(member, paid_this_period_override=None, membership_fee_override=None):
     normalized_role = normalize_role(member.role)
     paid_this_period = (
         float(paid_this_period_override)
         if paid_this_period_override is not None
         else float(member.paid_this_period)
+    )
+    membership_fee = (
+        float(membership_fee_override)
+        if membership_fee_override is not None
+        else float(member.membership_fee)
     )
     return {
         "id": member.id,
@@ -190,7 +202,7 @@ def member_to_dict(member, paid_this_period_override=None):
         "last_name": member.last_name,
         "phone": member.phone,
         "status": member.status,
-        "membership_fee": float(member.membership_fee),
+        "membership_fee": membership_fee,
         "paid_this_period": paid_this_period,
         "joining_fee_paid": bool(member.joining_fee_paid),
         "role": normalized_role,
@@ -218,6 +230,34 @@ def normalize_role(raw_role):
 
 def is_admin_member(member):
     return normalize_role(member.role) == "admin"
+
+
+def get_member_season_fee(member_id, season_label):
+    return MemberSeasonFee.query.filter_by(member_id=member_id, season_label=season_label).first()
+
+
+def get_effective_membership_fee(member, season_label):
+    if season_label:
+        fee_row = get_member_season_fee(member.id, season_label)
+        if fee_row:
+            return to_decimal(fee_row.membership_fee)
+    return to_decimal(member.membership_fee)
+
+
+def set_membership_fee_for_season(member, season_label, membership_fee):
+    fee_value = to_decimal(membership_fee)
+    fee_row = get_member_season_fee(member.id, season_label)
+    if fee_row:
+        fee_row.membership_fee = fee_value
+    else:
+        db.session.add(
+            MemberSeasonFee(
+                member_id=member.id,
+                season_label=season_label,
+                membership_fee=fee_value,
+            )
+        )
+    return fee_value
 
 
 def token_required(allowed_roles=None):
@@ -328,7 +368,18 @@ def ensure_seed_data():
         db.session.add(admin)
         db.session.commit()
 
-    current_period()
+    period = current_period()
+
+    for member in Member.query.all():
+        if not get_member_season_fee(member.id, period.season_label):
+            db.session.add(
+                MemberSeasonFee(
+                    member_id=member.id,
+                    season_label=period.season_label,
+                    membership_fee=to_decimal(member.membership_fee),
+                )
+            )
+    db.session.commit()
 
 
 @app.route("/")
@@ -484,12 +535,15 @@ def list_members():
         .all()
     )
     paid_map = {member_id: total for member_id, total in paid_rows}
+    fee_rows = MemberSeasonFee.query.filter_by(season_label=period.season_label).all()
+    fee_map = {row.member_id: row.membership_fee for row in fee_rows}
 
     return jsonify(
         [
             member_to_dict(
                 m,
                 paid_this_period_override=paid_map.get(m.id, 0),
+                membership_fee_override=fee_map.get(m.id, m.membership_fee),
             )
             for m in members
         ]
@@ -503,6 +557,8 @@ def create_member():
 
     phone = str(data.get("phone", "")).strip()
     role = normalize_role(data.get("role", "member"))
+    season_label = str(data.get("season_label", current_period().season_label)).strip()
+    membership_fee = to_decimal(data.get("membership_fee", 0) or 0)
 
     if not validate_phone(phone):
         return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
@@ -519,13 +575,15 @@ def create_member():
         last_name=str(data.get("last_name", "")).strip() or "Uzvards",
         phone=phone,
         status=str(data.get("status", "active")).strip(),
-        membership_fee=to_decimal(data.get("membership_fee", 0) or 0),
+        membership_fee=membership_fee,
         paid_this_period=0,
         joining_fee_paid=to_bool(data.get("joining_fee_paid", False)),
         role=role,
     )
 
     db.session.add(member)
+    db.session.flush()
+    set_membership_fee_for_season(member, season_label, membership_fee)
     db.session.commit()
 
     return jsonify(member_to_dict(member)), 201
@@ -544,6 +602,7 @@ def update_member(member_id):
 
     data = request.get_json() or {}
     phone = str(data.get("phone", member.phone)).strip()
+    season_label = str(data.get("season_label") or request.args.get("season_label") or current_period().season_label).strip()
 
     if not validate_phone(phone):
         return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
@@ -556,7 +615,10 @@ def update_member(member_id):
     member.last_name = str(data.get("last_name", member.last_name)).strip()
     member.phone = phone
     member.status = str(data.get("status", member.status)).strip()
-    member.membership_fee = to_decimal(data.get("membership_fee", member.membership_fee))
+    membership_fee = to_decimal(data.get("membership_fee", get_effective_membership_fee(member, season_label)))
+    set_membership_fee_for_season(member, season_label, membership_fee)
+    if current_period().season_label == season_label:
+        member.membership_fee = membership_fee
     member.joining_fee_paid = to_bool(data.get("joining_fee_paid", member.joining_fee_paid))
 
     if requester_role == "admin":
@@ -566,7 +628,7 @@ def update_member(member_id):
         member.role = role
 
     db.session.commit()
-    return jsonify(member_to_dict(member))
+    return jsonify(member_to_dict(member, membership_fee_override=membership_fee))
 
 
 @app.route("/api/members/<int:member_id>", methods=["DELETE"])
@@ -633,9 +695,11 @@ def record_member_payment(member_id):
     db.session.add(income)
     db.session.commit()
 
+    active_season_label = current_period().season_label
+    current_membership_fee = get_effective_membership_fee(member, active_season_label)
     progress = 0.0
-    if to_decimal(member.membership_fee) > 0:
-        progress = float((to_decimal(member.paid_this_period) / to_decimal(member.membership_fee)) * 100)
+    if current_membership_fee > 0:
+        progress = float((to_decimal(member.paid_this_period) / current_membership_fee) * 100)
 
     return jsonify({"message": "Iemaksa pievienota", "progress_percent": round(progress, 2)})
 
@@ -788,6 +852,7 @@ def update_period():
     data = request.get_json() or {}
     season_label = (data.get("season_label") or "").strip()
     default_membership_fee = to_decimal(data.get("default_membership_fee", 0) or 0)
+    carry_over = to_decimal(data.get("carry_over", 0) or 0)
     current_user_role = normalize_role(request.current_user.role)
     active_period = Period.query.filter_by(active=True).first()
     is_new_season = active_period is None or active_period.season_label != season_label
@@ -795,6 +860,8 @@ def update_period():
     period_lock = get_or_create_period_lock(season_label)
     if current_user_role == "board" and period_lock.membership_fee_locked:
         return jsonify({"error": "Saja perioda biedra maksu pec pirmas saglabasanas var mainit tikai admin"}), 403
+    if current_user_role == "board" and period_lock.carry_over_locked:
+        return jsonify({"error": "Saja perioda atlikumu pec pirmas saglabasanas var mainit tikai admin"}), 403
 
     if len(season_label) != 9 or "/" not in season_label:
         return jsonify({"error": "Sezonas formatam jabut yyyy/yyyy"}), 400
@@ -804,25 +871,37 @@ def update_period():
     if end_year != start_year + 1:
         return jsonify({"error": "Sezonas gadi neatbilst formatam yyyy/yyyy"}), 400
 
-    Period.query.update({"active": False})
-    period = Period(
-        season_label=season_label,
-        start_date=date(start_year, 4, 1),
-        end_date=date(end_year, 3, 31),
-        carry_over=0,
-        active=True,
-    )
-    db.session.add(period)
+    if is_new_season:
+        Period.query.update({"active": False})
+        period = Period(
+            season_label=season_label,
+            start_date=date(start_year, 4, 1),
+            end_date=date(end_year, 3, 31),
+            carry_over=0,
+            active=True,
+        )
+        db.session.add(period)
+    else:
+        period = active_period
+        period.start_date = date(start_year, 4, 1)
+        period.end_date = date(end_year, 3, 31)
+        period.active = True
+    period.carry_over = carry_over
 
     members = Member.query.all()
 
     if default_membership_fee > 0:
         for member in members:
-            member.membership_fee = calculate_membership_fee_for_period(member, default_membership_fee)
+            fee_value = calculate_membership_fee_for_period(member, default_membership_fee)
+            set_membership_fee_for_season(member, season_label, fee_value)
+            member.membership_fee = fee_value
             member.paid_this_period = 0
 
         if current_user_role == "board":
             period_lock.membership_fee_locked = True
+
+    if current_user_role == "board":
+        period_lock.carry_over_locked = True
 
     # Iestāšanās maksas atzīme ir aktīva tikai vienu sezonu.
     if is_new_season:
