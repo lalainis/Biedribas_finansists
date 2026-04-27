@@ -14,8 +14,11 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 BASE_DIR = Path(__file__).resolve().parent
+IS_RENDER = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID"))
+
 load_dotenv()
-load_dotenv(BASE_DIR / "finan.env")
+if not IS_RENDER:
+    load_dotenv(BASE_DIR / "finan.env")
 
 UPLOAD_DIR = BASE_DIR / os.getenv("UPLOAD_DIR", "uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
