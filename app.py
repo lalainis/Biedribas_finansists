@@ -10,6 +10,7 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from openpyxl import Workbook
+from sqlalchemy import inspect, text
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -354,6 +355,40 @@ def ensure_seed_data():
     for name in default_statuses:
         if not MemberStatus.query.filter_by(name=name).first():
             db.session.add(MemberStatus(name=name))
+    db.session.commit()
+
+
+def ensure_schema_compatibility():
+    inspector = inspect(db.engine)
+
+    if inspector.has_table("member"):
+        member_columns = {column["name"] for column in inspector.get_columns("member")}
+        alter_statements = []
+        if "membership_fee" not in member_columns:
+            alter_statements.append("ALTER TABLE member ADD COLUMN membership_fee NUMERIC(10, 2) NOT NULL DEFAULT 0")
+        if "paid_this_period" not in member_columns:
+            alter_statements.append("ALTER TABLE member ADD COLUMN paid_this_period NUMERIC(10, 2) NOT NULL DEFAULT 0")
+        if "role" not in member_columns:
+            alter_statements.append("ALTER TABLE member ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'member'")
+        if "pin_hash" not in member_columns:
+            alter_statements.append("ALTER TABLE member ADD COLUMN pin_hash VARCHAR(255)")
+        if "Iestāšanās maksa" not in member_columns:
+            alter_statements.append('ALTER TABLE member ADD COLUMN "Iestāšanās maksa" BOOLEAN NOT NULL DEFAULT FALSE')
+
+        for statement in alter_statements:
+            db.session.execute(text(statement))
+
+    if inspector.has_table("period"):
+        period_columns = {column["name"] for column in inspector.get_columns("period")}
+        alter_statements = []
+        if "carry_over" not in period_columns:
+            alter_statements.append("ALTER TABLE period ADD COLUMN carry_over NUMERIC(10, 2) NOT NULL DEFAULT 0")
+        if "active" not in period_columns:
+            alter_statements.append("ALTER TABLE period ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE")
+
+        for statement in alter_statements:
+            db.session.execute(text(statement))
+
     db.session.commit()
 
     if Member.query.count() == 0:
@@ -1013,6 +1048,7 @@ def export_balance():
 def initialize_app_data():
     with app.app_context():
         db.create_all()
+        ensure_schema_compatibility()
         ensure_seed_data()
 
 
