@@ -70,6 +70,11 @@ class Member(db.Model):
     pin_hash = db.Column(db.String(255), nullable=True)
 
 
+class MemberStatus(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+
+
 class Period(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     season_label = db.Column(db.String(9), nullable=False)
@@ -279,6 +284,12 @@ def next_member_list_no():
 
 
 def ensure_seed_data():
+    default_statuses = ["Biedrs", "Kandidāts", "VIP", "Vecbiedrs 2/3", "Vecbiedrs 1/2"]
+    for name in default_statuses:
+        if not MemberStatus.query.filter_by(name=name).first():
+            db.session.add(MemberStatus(name=name))
+    db.session.commit()
+
     if Member.query.count() == 0:
         admin = Member(
             list_no=1,
@@ -310,6 +321,13 @@ def asset_file(filename):
 @app.route("/api/config")
 def config():
     return jsonify({"expense_categories": EXPENSE_CATEGORIES})
+
+
+@app.route("/api/member-statuses")
+@token_required({"board", "admin"})
+def member_statuses():
+    statuses = MemberStatus.query.order_by(MemberStatus.id.asc()).all()
+    return jsonify({"statuses": [s.name for s in statuses]})
 
 
 @app.route("/api/auth/init", methods=["POST"])

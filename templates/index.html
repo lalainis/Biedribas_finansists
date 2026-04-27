@@ -208,7 +208,11 @@
                 <td><input v-model="m.first_name" /></td>
                 <td><input v-model="m.last_name" /></td>
                 <td><input v-model="m.phone" maxlength="8" /></td>
-                <td><input v-model="m.status" /></td>
+                <td>
+                  <select v-model="m.status">
+                    <option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option>
+                  </select>
+                </td>
                 <td><input v-model="m.role" :disabled="user.role !== 'admin'" /></td>
                 <td><input v-model.number="m.membership_fee" type="number" step="0.01" /></td>
                 <td><input v-model="m.joining_fee_paid" type="checkbox" /></td>
@@ -227,7 +231,9 @@
           <input v-model="forms.member.first_name" placeholder="Vārds" />
           <input v-model="forms.member.last_name" placeholder="Uzvārds" />
           <input v-model="forms.member.phone" maxlength="8" placeholder="Telefons" />
-          <input v-model="forms.member.status" placeholder="Statuss" />
+          <select v-model="forms.member.status">
+            <option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option>
+          </select>
           <input v-model.number="forms.member.membership_fee" type="number" step="0.01" placeholder="Biedra maksa" />
           <label><input v-model="forms.member.joining_fee_paid" type="checkbox" /> Iestāšanās maksa samaksāta</label>
           <input v-model="forms.member.role" placeholder="Loma" :disabled="user.role !== 'admin'" />

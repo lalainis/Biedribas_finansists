@@ -21,13 +21,14 @@ createApp({
       config: {
         expense_categories: [],
       },
+      memberStatuses: [],
       members: [],
       history: { incomes: [], expenses: [] },
       forms: {
         otherIncome: { amount: "", entry_date: new Date().toISOString().slice(0, 10), description: "" },
         memberPayment: { member_id: "", amount: "", entry_date: new Date().toISOString().slice(0, 10) },
         expense: { category: "", amount: "", entry_date: new Date().toISOString().slice(0, 10), description: "" },
-        member: { first_name: "", last_name: "", phone: "", status: "active", membership_fee: 0, joining_fee_paid: false, role: "member" },
+        member: { first_name: "", last_name: "", phone: "", status: "Biedrs", membership_fee: 0, joining_fee_paid: false, role: "member" },
         period: { season_label: "", default_membership_fee: 0, carry_over: 0 },
       },
       selectedFile: null,
@@ -47,6 +48,18 @@ createApp({
     },
     canManagePeriod() {
       return ["board", "admin"].includes(this.user?.role);
+    },
+    statusOptions() {
+      const options = [...this.memberStatuses];
+      const seen = new Set(options);
+      this.members.forEach((m) => {
+        const value = (m.status || "").trim();
+        if (value && !seen.has(value)) {
+          options.push(value);
+          seen.add(value);
+        }
+      });
+      return options;
     },
   },
   methods: {
@@ -72,6 +85,17 @@ createApp({
     },
     async loadConfig() {
       this.config = await this.api("/api/config");
+    },
+    async loadMemberStatuses() {
+      if (!this.token || !this.canManageMembers) {
+        this.memberStatuses = [];
+        return;
+      }
+      const data = await this.api("/api/member-statuses");
+      this.memberStatuses = data.statuses || [];
+      if (this.memberStatuses.length > 0 && !this.memberStatuses.includes(this.forms.member.status)) {
+        this.forms.member.status = this.memberStatuses[0];
+      }
     },
     async checkPhone() {
       this.resetMessages();
@@ -172,6 +196,7 @@ createApp({
     async refreshAll() {
       await this.loadConfig();
       if (this.token) {
+        await this.loadMemberStatuses();
         await this.loadAvailablePeriods();
         await this.loadDashboard();
         await this.loadMembers();
@@ -287,7 +312,15 @@ createApp({
           body: JSON.stringify(payload),
         });
         this.successMessage = "Biedrs pievienots";
-        this.forms.member = { first_name: "", last_name: "", phone: "", status: "active", membership_fee: 0, joining_fee_paid: false, role: "member" };
+        this.forms.member = {
+          first_name: "",
+          last_name: "",
+          phone: "",
+          status: this.memberStatuses[0] || "Biedrs",
+          membership_fee: 0,
+          joining_fee_paid: false,
+          role: "member",
+        };
         await this.loadMembers();
       } catch (err) {
         this.errorMessage = err.message;
