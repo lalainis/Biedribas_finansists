@@ -75,11 +75,15 @@ createApp({
       const response = await fetch(path, { ...options, headers });
       const contentType = response.headers.get("content-type") || "";
       let data = null;
+      let rawText = "";
       if (contentType.includes("application/json")) {
         data = await response.json();
+      } else {
+        rawText = await response.text();
       }
       if (!response.ok) {
-        const error = new Error(data?.error || "Neizdevas izpildit pieprasijumu");
+        const fallbackMessage = rawText ? `HTTP ${response.status}: ${rawText.slice(0, 200)}` : `HTTP ${response.status}`;
+        const error = new Error(data?.error || fallbackMessage || "Neizdevas izpildit pieprasijumu");
         error.status = response.status;
         throw error;
       }

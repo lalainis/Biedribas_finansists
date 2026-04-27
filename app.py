@@ -1007,11 +1007,16 @@ def export_balance():
     return send_from_directory(BASE_DIR, filename, as_attachment=True)
 
 
-if __name__ == "__main__":
+def initialize_app_data():
     with app.app_context():
         db.create_all()
         ensure_seed_data()
 
+
+initialize_app_data()
+
+
+if __name__ == "__main__":
     app.run(
         host=os.getenv("FLASK_RUN_HOST", "0.0.0.0"),
         port=int(os.getenv("FLASK_RUN_PORT", "5000")),
