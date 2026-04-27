@@ -84,6 +84,27 @@ function Resolve-PythonPath {
     throw "Python nav atrasts. Uzinstale Python vai aktivize .venv vidi."
 }
 
+function Get-LocalIPv4 {
+    try {
+        $ip = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
+            Where-Object {
+                $_.IPAddress -notlike "127.*" -and
+                $_.IPAddress -notlike "169.254.*" -and
+                $_.PrefixOrigin -ne "WellKnown"
+            } |
+            Sort-Object InterfaceMetric |
+            Select-Object -ExpandProperty IPAddress -First 1
+
+        if ($ip) {
+            return $ip
+        }
+    }
+    catch {
+    }
+
+    return $null
+}
+
 $envMap = Get-EnvMap -Path $EnvFile
 if (-not $envMap.ContainsKey("DATABASE_URL")) {
     throw "DATABASE_URL nav definets faila: $EnvFile"
@@ -116,6 +137,11 @@ $dbName = $uri.AbsolutePath.TrimStart("/")
 
 if ([string]::IsNullOrWhiteSpace($dbName)) {
     throw "DATABASE_URL nav noradits datubazes nosaukums."
+}
+
+$appPort = 5000
+if ($envMap.ContainsKey("FLASK_RUN_PORT") -and $envMap["FLASK_RUN_PORT"]) {
+    $appPort = [int]$envMap["FLASK_RUN_PORT"]
 }
 
 $psql = Resolve-PsqlPath
@@ -214,6 +240,14 @@ finally {
 
 if ($StartApp) {
     Write-Host "Palaizu aplikaciju..."
+    $mobileIp = Get-LocalIPv4
+    if ($mobileIp) {
+        Write-Host "Telefona adrese: http://$mobileIp`:$appPort"
+    }
+    else {
+        Write-Host "Telefona adrese nav noteikta automatiski."
+    }
+
     $pythonArgs = @(Resolve-PythonPath)
     $pythonExe = $pythonArgs[0]
     $pythonExtraArgs = @()
