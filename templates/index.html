@@ -95,7 +95,7 @@
         <p class="muted">Iemaksas pārskata periodā: {{ dashboard.period.season_label }}</p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Iestāšanās maksa</th><th>Iemaksāts periodā (EUR)</th></tr></thead>
+            <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Iestāšanās maksa</th><th>Jāmaksā periodā (EUR)</th><th>Iemaksāts periodā (EUR)</th></tr></thead>
             <tbody>
               <tr v-for="m in members" :key="m.id">
                 <td>{{ m.list_no }}</td>
@@ -103,6 +103,7 @@
                 <td>{{ m.last_name }}</td>
                 <td>{{ m.phone }}</td>
                 <td>{{ m.joining_fee_paid ? 'Jā' : 'Nē' }}</td>
+                <td>{{ m.membership_fee.toFixed(2) }}</td>
                 <td>{{ m.paid_this_period.toFixed(2) }}</td>
               </tr>
             </tbody>

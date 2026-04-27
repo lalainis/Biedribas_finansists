@@ -216,6 +216,10 @@ def normalize_role(raw_role):
     return aliases.get(role, role)
 
 
+def is_admin_member(member):
+    return normalize_role(member.role) == "admin"
+
+
 def token_required(allowed_roles=None):
     allowed_roles = allowed_roles or ROLES
 
@@ -260,6 +264,25 @@ def to_bool(value):
     if isinstance(value, str):
         return value.strip().lower() in {"1", "true", "yes", "y", "on", "ja"}
     return bool(value)
+
+
+def calculate_membership_fee_for_period(member, base_fee):
+    status = (member.status or "").strip().lower()
+    base = to_decimal(base_fee)
+    fee = base
+
+    if status == "vip":
+        fee = Decimal("0.00")
+    elif status == "vecbiedrs 2/3":
+        fee = (base * Decimal("2") / Decimal("3")).quantize(Decimal("0.01"))
+    elif status == "vecbiedrs 1/2":
+        fee = (base / Decimal("2")).quantize(Decimal("0.01"))
+
+    # Ja iestāšanās maksa ir atzīmēta, periodā pieskaita vēl 2 pilnas gada biedra maksas.
+    if to_bool(member.joining_fee_paid):
+        fee += (base * Decimal("2")).quantize(Decimal("0.01"))
+
+    return fee.quantize(Decimal("0.01"))
 
 
 def resequence_members():
@@ -340,6 +363,8 @@ def auth_init():
 
     user = Member.query.filter_by(phone=phone).first()
     if not user:
+        return jsonify({"error": "Jūs neesat biedrs"}), 404
+    if normalize_role(user.role) == "admin":
         return jsonify({"error": "Jūs neesat biedrs"}), 404
     if normalize_role(user.role) == "member":
         return jsonify({"error": "Jums nav tiesību ienākt."}), 403
@@ -485,6 +510,8 @@ def create_member():
         return jsonify({"error": "Lietotājs ar šo telefona numuru jau eksistē"}), 409
     if role not in ROLES:
         return jsonify({"error": "Nederīga loma"}), 400
+    if normalize_role(request.current_user.role) != "admin" and role == "admin":
+        return jsonify({"error": "Tikai admin drikst izveidot admin kontu"}), 403
 
     member = Member(
         list_no=next_member_list_no(),
@@ -511,6 +538,10 @@ def update_member(member_id):
     if not member:
         return jsonify({"error": "Biedrs nav atrasts"}), 404
 
+    requester_role = normalize_role(request.current_user.role)
+    if requester_role != "admin" and is_admin_member(member):
+        return jsonify({"error": "Admin konts ir redzams un labojams tikai admin"}), 403
+
     data = request.get_json() or {}
     phone = str(data.get("phone", member.phone)).strip()
 
@@ -528,7 +559,7 @@ def update_member(member_id):
     member.membership_fee = to_decimal(data.get("membership_fee", member.membership_fee))
     member.joining_fee_paid = to_bool(data.get("joining_fee_paid", member.joining_fee_paid))
 
-    if normalize_role(request.current_user.role) == "admin":
+    if requester_role == "admin":
         role = normalize_role(data.get("role", member.role))
         if role not in ROLES:
             return jsonify({"error": "Nederīga loma"}), 400
@@ -544,6 +575,9 @@ def delete_member(member_id):
     member = db.session.get(Member, member_id)
     if not member:
         return jsonify({"error": "Biedrs nav atrasts"}), 404
+
+    if normalize_role(request.current_user.role) != "admin" and is_admin_member(member):
+        return jsonify({"error": "Admin kontu var dzest tikai admin"}), 403
 
     db.session.delete(member)
     db.session.commit()
@@ -576,6 +610,9 @@ def record_member_payment(member_id):
     member = db.session.get(Member, member_id)
     if not member:
         return jsonify({"error": "Biedrs nav atrasts"}), 404
+
+    if normalize_role(request.current_user.role) != "admin" and is_admin_member(member):
+        return jsonify({"error": "Admin konts nav pieejams"}), 403
 
     data = request.get_json() or {}
     amount = to_decimal(data.get("amount", 0) or 0)
@@ -752,6 +789,8 @@ def update_period():
     season_label = (data.get("season_label") or "").strip()
     default_membership_fee = to_decimal(data.get("default_membership_fee", 0) or 0)
     current_user_role = normalize_role(request.current_user.role)
+    active_period = Period.query.filter_by(active=True).first()
+    is_new_season = active_period is None or active_period.season_label != season_label
 
     period_lock = get_or_create_period_lock(season_label)
     if current_user_role == "board" and period_lock.membership_fee_locked:
@@ -775,13 +814,20 @@ def update_period():
     )
     db.session.add(period)
 
+    members = Member.query.all()
+
     if default_membership_fee > 0:
-        for member in Member.query.all():
-            member.membership_fee = default_membership_fee
+        for member in members:
+            member.membership_fee = calculate_membership_fee_for_period(member, default_membership_fee)
             member.paid_this_period = 0
 
         if current_user_role == "board":
             period_lock.membership_fee_locked = True
+
+    # Iestāšanās maksas atzīme ir aktīva tikai vienu sezonu.
+    if is_new_season:
+        for member in members:
+            member.joining_fee_paid = False
 
     db.session.commit()
     return jsonify({"message": "Parskata periods atjaunots"})

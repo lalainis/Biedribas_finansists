@@ -107,7 +107,8 @@ createApp({
         });
         this.auth.step = data.needs_pin_setup ? "setup" : "login";
       } catch (err) {
-        this.errorMessage = err.message;
+        this.auth.step = "login";
+        this.errorMessage = "";
       }
     },
     async setupPin() {
