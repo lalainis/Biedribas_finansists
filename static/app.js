@@ -149,7 +149,8 @@ createApp({
       const data = await this.api("/api/periods/available");
       this.availablePeriods = data.periods || [];
       if (!this.selectedSeason && this.availablePeriods.length > 0) {
-        this.selectedSeason = this.availablePeriods[0].season_label;
+        const activePeriod = this.availablePeriods.find((p) => p.active);
+        this.selectedSeason = (activePeriod || this.availablePeriods[0]).season_label;
       }
     },
     async loadMembers() {

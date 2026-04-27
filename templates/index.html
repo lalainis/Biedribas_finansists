@@ -58,7 +58,7 @@
           <div>
             <label for="season-select">Sezona</label>
             <select id="season-select" v-model="selectedSeason" @change="onSeasonChange">
-              <option v-for="p in availablePeriods" :key="p.season_label" :value="p.season_label">{{ p.season_label }}</option>
+              <option v-for="p in availablePeriods" :key="p.season_label" :value="p.season_label">{{ p.season_label }}{{ p.active ? ' (aktīvā)' : '' }}</option>
             </select>
           </div>
         </div>

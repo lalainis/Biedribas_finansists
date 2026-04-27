@@ -691,19 +691,9 @@ def get_attachment(filename):
 @app.route("/api/periods/available")
 @token_required()
 def available_periods():
-    locked_seasons = {
-        lock.season_label
-        for lock in PeriodLock.query.filter_by(
-            membership_fee_locked=True,
-            carry_over_locked=True,
-        ).all()
-    }
-
-    periods = (
-        Period.query.filter(Period.season_label.in_(locked_seasons))
-        .order_by(Period.start_date.desc())
-        .all()
-    )
+    periods = Period.query.order_by(Period.start_date.desc()).all()
+    if not periods:
+        periods = [current_period()]
 
     unique = []
     seen = set()
@@ -716,6 +706,7 @@ def available_periods():
                 "season_label": period.season_label,
                 "start_date": period.start_date.isoformat(),
                 "end_date": period.end_date.isoformat(),
+                "active": bool(period.active),
             }
         )
 
