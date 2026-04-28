@@ -109,6 +109,33 @@ button.danger {
   background: var(--danger);
 }
 
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.action-buttons button {
+  flex: 1;
+  min-width: 50px;
+  padding: 6px 8px;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-buttons button svg {
+  display: block;
+  color: currentColor;
+}
+
+.action-buttons button.ghost {
+  background: rgba(23, 48, 66, 0.05);
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
