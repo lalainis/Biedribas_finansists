@@ -14,10 +14,12 @@
 </head>
 <body>
   <div id="app">
-    <img class="corner-logo" src="/assets/MB%20Milgravis.png" alt="MB Milgravis logo" />
     {% raw %}
     <header class="topbar">
-      <h1>Biedrības Finansists</h1>
+      <h1 class="brand-title">
+        <img class="title-logo" src="/assets/MB%20Milgravis.png" alt="MB Milgravis logo" />
+        <span>Biedrības Finansists</span>
+      </h1>
       <button v-if="token" @click="logout" class="ghost">Izrakstīties</button>
     </header>
 
@@ -84,8 +86,8 @@
       <nav class="tabs card">
         <button v-if="canWriteIncome" @click="tab='income'" :class="{active: tab==='income'}">Ieņēmumi</button>
         <button v-if="canWriteExpense" @click="tab='expense'" :class="{active: tab==='expense'}">Izdevumi</button>
-        <button @click="tab='history'" :class="{active: tab==='history'}">Vēsture</button>
-        <button @click="tab='member-list'" :class="{active: tab==='member-list'}">Biedru saraksts</button>
+        <button class="outline-tab" @click="tab='history'" :class="{active: tab==='history'}">Vēsture</button>
+        <button class="outline-tab" @click="tab='member-list'" :class="{active: tab==='member-list'}">Biedru saraksts</button>
         <button v-if="canManageMembers" @click="tab='members'" :class="{active: tab==='members'}">Biedri</button>
         <button v-if="canManagePeriod" @click="tab='period'" :class="{active: tab==='period'}">Periods</button>
       </nav>
@@ -94,17 +96,17 @@
         <h3>Biedru saraksts</h3>
         <p class="muted">Iemaksas pārskata periodā: {{ dashboard.period.season_label }}</p>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Iestāšanās maksa</th><th>Jāmaksā periodā (EUR)</th><th>Iemaksāts periodā (EUR)</th></tr></thead>
+          <table class="responsive-cards members-list-table">
+            <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Iestāšanās maksa</th><th class="amount-col">Jāmaksā periodā (EUR)</th><th class="amount-col">Iemaksāts periodā (EUR)</th></tr></thead>
             <tbody>
-              <tr v-for="m in members" :key="m.id">
+              <tr v-for="m in members" :key="m.id" :class="{ 'paid-member-row': isMemberFullyPaid(m) }">
                 <td>{{ m.list_no }}</td>
                 <td>{{ m.first_name }}</td>
                 <td>{{ m.last_name }}</td>
                 <td>{{ m.phone }}</td>
                 <td>{{ m.joining_fee_paid ? 'Jā' : 'Nē' }}</td>
-                <td>{{ m.membership_fee.toFixed(2) }}</td>
-                <td>{{ m.paid_this_period.toFixed(2) }}</td>
+                <td class="amount-col">{{ m.membership_fee.toFixed(2) }}</td>
+                <td class="amount-col">{{ m.paid_this_period.toFixed(2) }}</td>
               </tr>
             </tbody>
           </table>
@@ -153,22 +155,27 @@
         <button @click="addExpense">Saglabāt izdevumus</button>
       </section>
 
-      <section class="card" v-if="tab==='history'">
-        <div class="history-head">
-          <h3>Pārskata perioda vēsture</h3>
-          <button @click="exportBalance">Eksportēt bilanci</button>
-        </div>
+      <section class="card history-card" v-if="tab==='history'">
+        <button class="excel-export-btn" @click="exportBalance" title="Eksportēt bilanci uz Excel">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M14 2v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M9.2 10.2 12.8 15.8M12.8 10.2 9.2 15.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <span>Eksportēt</span>
+        </button>
+        <h3 class="history-title">Pārskata perioda vēsture</h3>
 
         <h4>Ieņēmumi</h4>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>Datums</th><th>Tips</th><th>Biedrs</th><th>Summa</th><th>Apraksts</th></tr></thead>
+          <table class="responsive-cards history-income-table">
+            <thead><tr><th>Datums</th><th>Tips</th><th>Biedrs</th><th class="amount-col">Summa</th><th>Apraksts</th></tr></thead>
             <tbody>
               <tr v-for="i in history.incomes">
                 <td>{{ i.entry_date }}</td>
                 <td>{{ i.type }}</td>
                 <td>{{ i.member_name }}</td>
-                <td>{{ i.amount.toFixed(2) }}</td>
+                <td class="amount-col">{{ i.amount.toFixed(2) }}</td>
                 <td>{{ i.description }}</td>
               </tr>
             </tbody>
@@ -177,13 +184,13 @@
 
         <h4>Izdevumi</h4>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>Datums</th><th>Kategorija</th><th>Summa</th><th>Apraksts</th><th>Fails</th></tr></thead>
+          <table class="responsive-cards history-expense-table">
+            <thead><tr><th>Datums</th><th>Kategorija</th><th class="amount-col">Summa</th><th>Apraksts</th><th>Fails</th></tr></thead>
             <tbody>
               <tr v-for="e in history.expenses">
                 <td>{{ e.entry_date }}</td>
                 <td>{{ e.category }}</td>
-                <td>{{ e.amount.toFixed(2) }}</td>
+                <td class="amount-col">{{ e.amount.toFixed(2) }}</td>
                 <td>{{ e.description }}</td>
                 <td>
                   <a
@@ -201,8 +208,8 @@
       <section class="card" v-if="tab==='members' && canManageMembers">
         <h3>Biedrības biedri</h3>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Statuss</th><th>Loma</th><th>Maksa</th><th>Iestāšanās maksa</th><th>Darbības</th></tr></thead>
+          <table class="responsive-cards manage-members-table">
+            <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Statuss</th><th>Loma</th><th class="amount-col">Maksa</th><th>Iestāšanās maksa</th><th>Darbības</th></tr></thead>
             <tbody>
               <tr v-for="m in members" :key="m.id">
                 <td>{{ m.list_no }}</td>
@@ -214,8 +221,12 @@
                     <option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option>
                   </select>
                 </td>
-                <td><input v-model="m.role" :disabled="user.role !== 'admin'" /></td>
-                <td><input v-model.number="m.membership_fee" type="number" step="0.01" /></td>
+                <td>
+                  <select v-model="m.role" :disabled="user.role !== 'admin'">
+                    <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
+                  </select>
+                </td>
+                <td class="amount-col"><input v-model.number="m.membership_fee" type="number" step="0.01" /></td>
                 <td><input v-model="m.joining_fee_paid" type="checkbox" /></td>
                 <td>
                   <button @click="saveMember(m)">Saglabāt</button>
@@ -237,7 +248,9 @@
           </select>
           <input v-model.number="forms.member.membership_fee" type="number" step="0.01" placeholder="Biedra maksa" />
           <label><input v-model="forms.member.joining_fee_paid" type="checkbox" /> Jāsamaksā iestāšanās maksa</label>
-          <input v-model="forms.member.role" placeholder="Loma" :disabled="user.role !== 'admin'" />
+          <select v-model="forms.member.role" :disabled="user.role !== 'admin'">
+            <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
+          </select>
         </div>
         <button @click="addMember">Pievienot biedru</button>
       </section>
