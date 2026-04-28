@@ -24,10 +24,7 @@ Flask + Vue.js + PostgreSQL aplikacija biedribas ieņēmumu un izdevumu uzskaite
 
 4. Atver `http://127.0.0.1:5000`.
 
-## Noklusejuma administrators
 
-- Telefons: 29123456
-- PIN: 0308
 
 ## Lomas
 
