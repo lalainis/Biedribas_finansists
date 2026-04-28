@@ -49,6 +49,15 @@ createApp({
     canManagePeriod() {
       return ["board", "admin"].includes(this.user?.role);
     },
+    roleOptions() {
+      return [
+        { value: "member", label: "Biedrs" },
+        { value: "cashier", label: "Kasieris" },
+        { value: "board", label: "Valde" },
+        { value: "auditor", label: "Revidents" },
+        { value: "admin", label: "Administrators" },
+      ];
+    },
     statusOptions() {
       const options = [...this.memberStatuses];
       const seen = new Set(options);

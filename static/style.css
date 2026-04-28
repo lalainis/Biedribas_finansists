@@ -195,6 +195,16 @@ td {
   vertical-align: top;
 }
 
+th.amount-col,
+td.amount-col {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+td.amount-col input[type="number"] {
+  text-align: right;
+}
+
 .inline-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -206,6 +216,46 @@ td {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.history-card {
+  position: relative;
+}
+
+.history-title {
+  margin-top: 0;
+  margin-right: 150px;
+}
+
+.excel-export-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: auto;
+  margin: 0;
+  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(4, 120, 87, 0.35);
+  background: rgba(4, 120, 87, 0.08);
+  color: var(--brand);
+  font-size: 0.9rem;
+  font-weight: 700;
+  z-index: 2;
+}
+
+.excel-export-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.excel-export-btn:hover {
+  transform: translateY(-1px);
+  filter: none;
+  background: rgba(4, 120, 87, 0.14);
 }
 
 .muted {
@@ -248,5 +298,17 @@ hr {
   .history-head {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .history-title {
+    margin-right: 0;
+    padding-top: 46px;
+  }
+
+  .excel-export-btn {
+    top: 10px;
+    right: 10px;
+    padding: 6px 9px;
+    font-size: 0.82rem;
   }
 }

@@ -317,6 +317,18 @@ def to_bool(value):
     return bool(value)
 
 
+def localize_income_type(raw_type):
+    value = (raw_type or "").strip().lower()
+    mapping = {
+        "member_fee": "Biedra nauda",
+        "biedra nauda": "Biedra nauda",
+        "neplānots ienākums": "Neplānots ienākums",
+        "neplanots ienakums": "Neplānots ienākums",
+        "other_income": "Neplānots ienākums",
+    }
+    return mapping.get(value, raw_type)
+
+
 def calculate_membership_fee_for_period(member, base_fee):
     status = (member.status or "").strip().lower()
     base = to_decimal(base_fee)
@@ -362,6 +374,18 @@ def ensure_seed_data():
     for name in default_statuses:
         if not MemberStatus.query.filter_by(name=name).first():
             db.session.add(MemberStatus(name=name))
+
+    status_aliases = {
+        "active": "Biedrs",
+        "member": "Biedrs",
+        "candidate": "Kandidāts",
+        "vip": "VIP",
+    }
+    for member in Member.query.all():
+        normalized = (member.status or "").strip().lower()
+        if normalized in status_aliases:
+            member.status = status_aliases[normalized]
+
     db.session.commit()
 
 
@@ -858,7 +882,7 @@ def history():
         income_rows.append(
             {
                 "id": row.id,
-                "type": row.income_type,
+                "type": localize_income_type(row.income_type),
                 "member_name": member_name,
                 "amount": float(row.amount),
                 "entry_date": row.entry_date.isoformat(),
@@ -1010,7 +1034,7 @@ def export_balance():
             member_name = f"{member.first_name} {member.last_name}"
         ws_income.append(
             [
-                row.income_type,
+                localize_income_type(row.income_type),
                 member_name,
                 float(row.amount),
                 row.entry_date.isoformat(),
