@@ -10,14 +10,15 @@
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="manifest" href="/static/manifest.json" />
   <meta name="theme-color" content="#2c3e50" />
-  <link rel="apple-touch-icon" href="/assets/MB%20Milgravis.png" />
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="apple-touch-icon" href="/static/favicon.png" />
 </head>
 <body>
   <div id="app">
     {% raw %}
     <header class="topbar">
       <h1 class="brand-title">
-        <img class="title-logo" src="/assets/MB%20Milgravis.png" alt="MB Milgravis logo" />
+        <img class="title-logo" src="/static/favicon.png" alt="MB Milgravis logo" />
         <span>Biedrības Finansists</span>
       </h1>
       <button v-if="token" @click="logout" class="ghost">Izrakstīties</button>
