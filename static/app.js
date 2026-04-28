@@ -76,6 +76,17 @@ createApp({
       this.successMessage = "";
       this.errorMessage = "";
     },
+    isMemberFullyPaid(member) {
+      const fee = Number(member?.membership_fee || 0);
+      const paid = Number(member?.paid_this_period || 0);
+      if (!Number.isFinite(fee) || !Number.isFinite(paid)) {
+        return false;
+      }
+      if (fee <= 0) {
+        return true;
+      }
+      return paid >= fee;
+    },
     async api(path, options = {}) {
       const headers = options.headers || {};
       if (this.token) {

@@ -97,7 +97,7 @@
           <table>
             <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Iestāšanās maksa</th><th class="amount-col">Jāmaksā periodā (EUR)</th><th class="amount-col">Iemaksāts periodā (EUR)</th></tr></thead>
             <tbody>
-              <tr v-for="m in members" :key="m.id">
+              <tr v-for="m in members" :key="m.id" :class="{ 'paid-member-row': isMemberFullyPaid(m) }">
                 <td>{{ m.list_no }}</td>
                 <td>{{ m.first_name }}</td>
                 <td>{{ m.last_name }}</td>

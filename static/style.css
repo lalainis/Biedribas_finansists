@@ -201,6 +201,12 @@ td.amount-col {
   font-variant-numeric: tabular-nums;
 }
 
+.paid-member-row td {
+  background: rgba(22, 163, 74, 0.12);
+  color: #14532d;
+  font-weight: 600;
+}
+
 td.amount-col input[type="number"] {
   text-align: right;
 }
