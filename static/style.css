@@ -24,18 +24,8 @@ body {
 #app {
   width: min(1150px, 94vw);
   margin: 0 auto;
-  padding: 92px 0 32px;
+  padding: 26px 0 32px;
   position: relative;
-}
-
-.corner-logo {
-  position: fixed;
-  top: 14px;
-  right: 16px;
-  width: clamp(88px, 9vw, 132px);
-  height: auto;
-  z-index: 10;
-  filter: drop-shadow(0 10px 22px rgba(23, 48, 66, 0.25));
 }
 
 .topbar {
@@ -46,10 +36,20 @@ body {
   margin-bottom: 14px;
 }
 
-h1 {
+.brand-title {
   margin: 0;
   letter-spacing: 0.02em;
   font-size: clamp(1.35rem, 2.4vw, 2rem);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.title-logo {
+  width: clamp(42px, 5vw, 64px);
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 4px 10px rgba(23, 48, 66, 0.2));
 }
 
 .shell {
@@ -287,13 +287,16 @@ hr {
 @media (max-width: 640px) {
   #app {
     width: 96vw;
-    padding-top: 74px;
+    padding-top: 14px;
   }
 
-  .corner-logo {
-    top: 8px;
-    right: 8px;
-    width: clamp(62px, 18vw, 92px);
+  .brand-title {
+    gap: 8px;
+    font-size: clamp(1.15rem, 6vw, 1.45rem);
+  }
+
+  .title-logo {
+    width: clamp(34px, 11vw, 44px);
   }
 
   .card {
@@ -317,4 +320,92 @@ hr {
     padding: 6px 9px;
     font-size: 0.82rem;
   }
+
+  .table-wrap {
+    border: 0;
+    overflow: visible;
+  }
+
+  table.responsive-cards {
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  table.responsive-cards thead {
+    display: none;
+  }
+
+  table.responsive-cards tbody,
+  table.responsive-cards tr,
+  table.responsive-cards td {
+    display: block;
+    width: 100%;
+  }
+
+  table.responsive-cards tr {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 6px 8px;
+    margin-bottom: 10px;
+  }
+
+  table.responsive-cards td {
+    border-bottom: 1px dashed rgba(23, 48, 66, 0.14);
+    padding: 7px 8px;
+    text-align: left;
+  }
+
+  table.responsive-cards td:last-child {
+    border-bottom: 0;
+  }
+
+  table.responsive-cards td::before {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.74rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  table.responsive-cards td.amount-col {
+    text-align: left;
+  }
+
+  table.responsive-cards td.amount-col input[type="number"] {
+    text-align: left;
+  }
+
+  .members-list-table td:nth-child(1)::before { content: "Nr"; }
+  .members-list-table td:nth-child(2)::before { content: "Vārds"; }
+  .members-list-table td:nth-child(3)::before { content: "Uzvārds"; }
+  .members-list-table td:nth-child(4)::before { content: "Telefons"; }
+  .members-list-table td:nth-child(5)::before { content: "Iestāšanās maksa"; }
+  .members-list-table td:nth-child(6)::before { content: "Jāmaksā periodā"; }
+  .members-list-table td:nth-child(7)::before { content: "Iemaksāts periodā"; }
+
+  .history-income-table td:nth-child(1)::before { content: "Datums"; }
+  .history-income-table td:nth-child(2)::before { content: "Tips"; }
+  .history-income-table td:nth-child(3)::before { content: "Biedrs"; }
+  .history-income-table td:nth-child(4)::before { content: "Summa"; }
+  .history-income-table td:nth-child(5)::before { content: "Apraksts"; }
+
+  .history-expense-table td:nth-child(1)::before { content: "Datums"; }
+  .history-expense-table td:nth-child(2)::before { content: "Kategorija"; }
+  .history-expense-table td:nth-child(3)::before { content: "Summa"; }
+  .history-expense-table td:nth-child(4)::before { content: "Apraksts"; }
+  .history-expense-table td:nth-child(5)::before { content: "Fails"; }
+
+  .manage-members-table td:nth-child(1)::before { content: "Nr"; }
+  .manage-members-table td:nth-child(2)::before { content: "Vārds"; }
+  .manage-members-table td:nth-child(3)::before { content: "Uzvārds"; }
+  .manage-members-table td:nth-child(4)::before { content: "Telefons"; }
+  .manage-members-table td:nth-child(5)::before { content: "Statuss"; }
+  .manage-members-table td:nth-child(6)::before { content: "Loma"; }
+  .manage-members-table td:nth-child(7)::before { content: "Maksa"; }
+  .manage-members-table td:nth-child(8)::before { content: "Iestāšanās maksa"; }
+  .manage-members-table td:nth-child(9)::before { content: "Darbības"; }
 }

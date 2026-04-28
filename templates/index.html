@@ -14,10 +14,12 @@
 </head>
 <body>
   <div id="app">
-    <img class="corner-logo" src="/assets/MB%20Milgravis.png" alt="MB Milgravis logo" />
     {% raw %}
     <header class="topbar">
-      <h1>Biedrības Finansists</h1>
+      <h1 class="brand-title">
+        <img class="title-logo" src="/assets/MB%20Milgravis.png" alt="MB Milgravis logo" />
+        <span>Biedrības Finansists</span>
+      </h1>
       <button v-if="token" @click="logout" class="ghost">Izrakstīties</button>
     </header>
 
@@ -94,7 +96,7 @@
         <h3>Biedru saraksts</h3>
         <p class="muted">Iemaksas pārskata periodā: {{ dashboard.period.season_label }}</p>
         <div class="table-wrap">
-          <table>
+          <table class="responsive-cards members-list-table">
             <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Iestāšanās maksa</th><th class="amount-col">Jāmaksā periodā (EUR)</th><th class="amount-col">Iemaksāts periodā (EUR)</th></tr></thead>
             <tbody>
               <tr v-for="m in members" :key="m.id" :class="{ 'paid-member-row': isMemberFullyPaid(m) }">
@@ -166,7 +168,7 @@
 
         <h4>Ieņēmumi</h4>
         <div class="table-wrap">
-          <table>
+          <table class="responsive-cards history-income-table">
             <thead><tr><th>Datums</th><th>Tips</th><th>Biedrs</th><th class="amount-col">Summa</th><th>Apraksts</th></tr></thead>
             <tbody>
               <tr v-for="i in history.incomes">
@@ -182,7 +184,7 @@
 
         <h4>Izdevumi</h4>
         <div class="table-wrap">
-          <table>
+          <table class="responsive-cards history-expense-table">
             <thead><tr><th>Datums</th><th>Kategorija</th><th class="amount-col">Summa</th><th>Apraksts</th><th>Fails</th></tr></thead>
             <tbody>
               <tr v-for="e in history.expenses">
@@ -206,7 +208,7 @@
       <section class="card" v-if="tab==='members' && canManageMembers">
         <h3>Biedrības biedri</h3>
         <div class="table-wrap">
-          <table>
+          <table class="responsive-cards manage-members-table">
             <thead><tr><th>Nr</th><th>Vārds</th><th>Uzvārds</th><th>Telefons</th><th>Statuss</th><th>Loma</th><th class="amount-col">Maksa</th><th>Iestāšanās maksa</th><th>Darbības</th></tr></thead>
             <tbody>
               <tr v-for="m in members" :key="m.id">
