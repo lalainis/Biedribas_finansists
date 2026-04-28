@@ -158,6 +158,23 @@ button.danger {
   color: #fff;
 }
 
+.tabs button.outline-tab {
+  background: transparent;
+  color: var(--brand);
+  border: 2px solid var(--brand);
+}
+
+.tabs button.outline-tab:hover {
+  filter: none;
+  background: rgba(4, 120, 87, 0.08);
+}
+
+.tabs button.outline-tab.active {
+  background: rgba(4, 120, 87, 0.14);
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--line);
