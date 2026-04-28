@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Biedribas Finansists</title>
+  <title>Biedrības Finansists</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
     {% raw %}
     <header class="topbar">
       <h1>Biedrības Finansists</h1>
-      <button v-if="token" @click="logout" class="ghost">Izrakstities</button>
+      <button v-if="token" @click="logout" class="ghost">Izrakstīties</button>
     </header>
 
     <main class="shell" v-if="!token">
@@ -54,7 +54,7 @@
     <main class="shell" v-else>
       <section class="dashboard card">
         <div class="history-head">
-          <h2>Aktualais stavoklis</h2>
+          <h2>Aktuālais stāvoklis</h2>
           <div>
             <label for="season-select">Sezona</label>
             <select id="season-select" v-model="selectedSeason" @change="onSeasonChange">
@@ -64,7 +64,7 @@
         </div>
         <div class="stats">
           <article>
-            <small>Ienemumi EUR</small>
+            <small>Ieņēmumi EUR</small>
             <strong>{{ dashboard.totals.income_total.toFixed(2) }}</strong>
           </article>
           <article>
@@ -72,7 +72,7 @@
             <strong>{{ dashboard.totals.expense_total.toFixed(2) }}</strong>
           </article>
           <article>
-            <small>Atlikums / Deficits</small>
+            <small>Atlikums / Deficīts</small>
             <strong :class="dashboard.totals.difference >= 0 ? 'ok' : 'warn'">
               {{ dashboard.totals.difference.toFixed(2) }}
             </strong>
@@ -82,9 +82,9 @@
       </section>
 
       <nav class="tabs card">
-        <button v-if="canWriteIncome" @click="tab='income'" :class="{active: tab==='income'}">Ienemumi</button>
+        <button v-if="canWriteIncome" @click="tab='income'" :class="{active: tab==='income'}">Ieņēmumi</button>
         <button v-if="canWriteExpense" @click="tab='expense'" :class="{active: tab==='expense'}">Izdevumi</button>
-        <button @click="tab='history'" :class="{active: tab==='history'}">Vesture</button>
+        <button @click="tab='history'" :class="{active: tab==='history'}">Vēsture</button>
         <button @click="tab='member-list'" :class="{active: tab==='member-list'}">Biedru saraksts</button>
         <button v-if="canManageMembers" @click="tab='members'" :class="{active: tab==='members'}">Biedri</button>
         <button v-if="canManagePeriod" @click="tab='period'" :class="{active: tab==='period'}">Periods</button>
@@ -236,7 +236,7 @@
             <option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option>
           </select>
           <input v-model.number="forms.member.membership_fee" type="number" step="0.01" placeholder="Biedra maksa" />
-          <label><input v-model="forms.member.joining_fee_paid" type="checkbox" /> Iestāšanās maksa samaksāta</label>
+          <label><input v-model="forms.member.joining_fee_paid" type="checkbox" /> Jāsamaksā iestāšanās maksa</label>
           <input v-model="forms.member.role" placeholder="Loma" :disabled="user.role !== 'admin'" />
         </div>
         <button @click="addMember">Pievienot biedru</button>
@@ -246,7 +246,7 @@
         <h3>Pārskata periods</h3>
         <label>Sezona (yyyy/yyyy)</label>
         <input v-model="forms.period.season_label" placeholder="2026/2027" />
-        <label>Biedra maksa sezona (pēc izvēles)</label>
+        <label>Biedra maksa sezonā (pēc izvēles)</label>
         <input v-model="forms.period.default_membership_fee" type="number" step="0.01" />
         <label>Atlikums no iepriekšējā perioda EUR (var būt negatīvs)</label>
         <input v-model="forms.period.carry_over" type="number" step="0.01" />
