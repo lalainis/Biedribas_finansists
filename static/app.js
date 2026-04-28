@@ -49,6 +49,15 @@ createApp({
     canManagePeriod() {
       return ["board", "admin"].includes(this.user?.role);
     },
+    roleOptions() {
+      return [
+        { value: "member", label: "Biedrs" },
+        { value: "cashier", label: "Kasieris" },
+        { value: "board", label: "Valde" },
+        { value: "auditor", label: "Revidents" },
+        { value: "admin", label: "Administrators" },
+      ];
+    },
     statusOptions() {
       const options = [...this.memberStatuses];
       const seen = new Set(options);
@@ -66,6 +75,17 @@ createApp({
     resetMessages() {
       this.successMessage = "";
       this.errorMessage = "";
+    },
+    isMemberFullyPaid(member) {
+      const fee = Number(member?.membership_fee || 0);
+      const paid = Number(member?.paid_this_period || 0);
+      if (!Number.isFinite(fee) || !Number.isFinite(paid)) {
+        return false;
+      }
+      if (fee <= 0) {
+        return true;
+      }
+      return paid >= fee;
     },
     async api(path, options = {}) {
       const headers = options.headers || {};
