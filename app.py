@@ -39,8 +39,6 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
 CORS(app)
 db = SQLAlchemy(app)
 
-TOKENS = {}
-
 ROLES = {"cashier", "board", "auditor", "admin", "member"}
 EXPENSE_CATEGORIES = [
     "Saimnieciskie izdevumi",
@@ -77,6 +75,14 @@ class Member(db.Model):
 class MemberStatus(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True, nullable=False)
+
+
+class AuthToken(db.Model):
+    __tablename__ = "auth_token"
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(36), unique=True, nullable=False)
+    member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 
 class MemberSeasonFee(db.Model):
@@ -272,7 +278,8 @@ def token_required(allowed_roles=None):
         def wrapper(*args, **kwargs):
             auth = request.headers.get("Authorization", "")
             token = auth.replace("Bearer ", "").strip()
-            user_id = TOKENS.get(token)
+            session_token = AuthToken.query.filter_by(token=token).first()
+            user_id = session_token.member_id if session_token else None
             if not user_id:
                 return jsonify({"error": "Nepieciešama autorizācija"}), 401
 
@@ -397,7 +404,7 @@ def ensure_schema_compatibility():
             first_name="Admin",
             last_name="Konts",
             phone="29123456",
-            status="active",
+            status="VIP",
             membership_fee=0,
             paid_this_period=0,
             role="admin",
@@ -508,7 +515,8 @@ def login():
         return jsonify({"error": "Nepareizs PIN kods"}), 401
 
     token = str(uuid.uuid4())
-    TOKENS[token] = user.id
+    db.session.add(AuthToken(token=token, member_id=user.id))
+    db.session.commit()
 
     return jsonify(
         {
@@ -523,7 +531,8 @@ def login():
 def logout():
     auth = request.headers.get("Authorization", "")
     token = auth.replace("Bearer ", "").strip()
-    TOKENS.pop(token, None)
+    AuthToken.query.filter_by(token=token).delete()
+    db.session.commit()
     return jsonify({"message": "Izrakstīšanās izdevusies"})
 
 
@@ -598,6 +607,11 @@ def create_member():
     season_label = str(data.get("season_label", current_period().season_label)).strip()
     membership_fee = to_decimal(data.get("membership_fee", 0) or 0)
 
+    status = str(data.get("status", "Biedrs")).strip()
+    valid_statuses = [s.name for s in MemberStatus.query.all()]
+    if status not in valid_statuses:
+        return jsonify({"error": f"Nederīgs statuss. Atļautie: {', '.join(valid_statuses)}"}), 400
+
     if not validate_phone(phone):
         return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
     if Member.query.filter_by(phone=phone).first():
@@ -612,7 +626,7 @@ def create_member():
         first_name=str(data.get("first_name", "")).strip() or "Vards",
         last_name=str(data.get("last_name", "")).strip() or "Uzvards",
         phone=phone,
-        status=str(data.get("status", "active")).strip(),
+        status=status,
         membership_fee=membership_fee,
         paid_this_period=0,
         joining_fee_paid=to_bool(data.get("joining_fee_paid", False)),
@@ -652,7 +666,12 @@ def update_member(member_id):
     member.first_name = str(data.get("first_name", member.first_name)).strip()
     member.last_name = str(data.get("last_name", member.last_name)).strip()
     member.phone = phone
-    member.status = str(data.get("status", member.status)).strip()
+    if "status" in data:
+        new_status = str(data["status"]).strip()
+        valid_statuses = [s.name for s in MemberStatus.query.all()]
+        if new_status not in valid_statuses:
+            return jsonify({"error": f"Nederīgs statuss. Atļautie: {', '.join(valid_statuses)}"}), 400
+        member.status = new_status
     membership_fee = to_decimal(data.get("membership_fee", get_effective_membership_fee(member, season_label)))
     set_membership_fee_for_season(member, season_label, membership_fee)
     if current_period().season_label == season_label:
@@ -721,6 +740,7 @@ def record_member_payment(member_id):
     if amount <= 0:
         return jsonify({"error": "Summai jābūt lielākai par 0"}), 400
 
+    active_period = current_period()
     income = Income(
         income_type="member_fee",
         member_id=member.id,
@@ -728,13 +748,22 @@ def record_member_payment(member_id):
         entry_date=entry_date,
         description="Biedra naudas iemaksa",
     )
-    member.paid_this_period = to_decimal(member.paid_this_period) + amount
-
     db.session.add(income)
+    db.session.flush()
+
+    # Compute paid_this_period from Income table (single source of truth)
+    paid_total = db.session.query(
+        db.func.coalesce(db.func.sum(Income.amount), 0)
+    ).filter(
+        Income.income_type.in_(["member_fee", "biedra nauda"]),
+        Income.member_id == member.id,
+        Income.entry_date >= active_period.start_date,
+        Income.entry_date <= active_period.end_date,
+    ).scalar()
+    member.paid_this_period = to_decimal(paid_total)
     db.session.commit()
 
-    active_season_label = current_period().season_label
-    current_membership_fee = get_effective_membership_fee(member, active_season_label)
+    current_membership_fee = get_effective_membership_fee(member, active_period.season_label)
     progress = 0.0
     if current_membership_fee > 0:
         progress = float((to_decimal(member.paid_this_period) / current_membership_fee) * 100)
@@ -950,28 +979,6 @@ def update_period():
     return jsonify({"message": "Parskata periods atjaunots"})
 
 
-@app.route("/api/period/carryover", methods=["POST"])
-@token_required({"board", "admin"})
-def set_carryover():
-    data = request.get_json() or {}
-    carry_over = to_decimal(data.get("carry_over", 0) or 0)
-    current_user_role = normalize_role(request.current_user.role)
-
-    period = current_period()
-    period_lock = get_or_create_period_lock(period.season_label)
-    if current_user_role == "board" and period_lock.carry_over_locked:
-        return jsonify({"error": "Saja perioda atlikumu pec pirmas saglabasanas var mainit tikai admin"}), 403
-
-    period.carry_over = carry_over
-
-    if current_user_role == "board":
-        period_lock.carry_over_locked = True
-
-    db.session.commit()
-
-    return jsonify({"message": "Atlikums no iepriekseja perioda saglabats"})
-
-
 @app.route("/api/export")
 @token_required({"cashier", "board", "admin", "auditor"})
 def export_balance():
@@ -1037,6 +1044,30 @@ def export_balance():
         ws_summary.append(["Atlikums EUR", totals["balance"]])
     else:
         ws_summary.append(["Deficīts EUR", totals["deficit"]])
+
+    ws_members = wb.create_sheet("Biedri")
+    ws_members.append(["Nr.", "Vārds", "Uzvārds", "Statuss", "Jāmaksā EUR", "Samaksāts EUR", "Iestāšanās maksa"])
+    all_members = Member.query.order_by(Member.list_no).all()
+    if requester_role != "admin":
+        all_members = [m for m in all_members if normalize_role(m.role) != "admin"]
+    paid_rows_map = {
+        mid: tot for mid, tot in (
+            db.session.query(Income.member_id, db.func.coalesce(db.func.sum(Income.amount), 0))
+            .filter(
+                Income.income_type.in_(["member_fee", "biedra nauda"]),
+                Income.member_id.isnot(None),
+                Income.entry_date >= period.start_date,
+                Income.entry_date <= period.end_date,
+            )
+            .group_by(Income.member_id)
+            .all()
+        )
+    }
+    fee_rows_map = {row.member_id: row.membership_fee for row in MemberSeasonFee.query.filter_by(season_label=period.season_label).all()}
+    for m in all_members:
+        fee = float(fee_rows_map.get(m.id, m.membership_fee))
+        paid = float(paid_rows_map.get(m.id, 0))
+        ws_members.append([m.list_no, m.first_name, m.last_name, m.status, fee, paid, "Jā" if m.joining_fee_paid else "Nē"])
 
     filename = f"bilance_{period.season_label.replace('/', '-')}.xlsx"
     file_path = BASE_DIR / filename
