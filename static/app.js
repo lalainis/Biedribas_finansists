@@ -206,6 +206,7 @@ createApp({
         this.user = data.user;
         localStorage.setItem("token", this.token);
         localStorage.setItem("user", JSON.stringify(this.user));
+        await this.refreshAll();
         this.tab = "member-list";
       } catch (err) {
         this.errorMessage = err.message;
