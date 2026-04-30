@@ -263,6 +263,49 @@ td.amount-col input[type="number"] {
   margin-right: 150px;
 }
 
+.history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: rgba(4, 120, 87, 0.04);
+  border: 1px solid rgba(4, 120, 87, 0.12);
+  border-radius: 12px;
+}
+
+.history-filters .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.history-filters .filter-group label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.history-filters select {
+  margin: 0;
+}
+
+.history-filters button.ghost {
+  align-self: flex-end;
+  padding: 8px 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.filter-count {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
 .excel-export-btn {
   position: absolute;
   top: 14px;

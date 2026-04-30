@@ -167,12 +167,37 @@
         </button>
         <h3 class="history-title">Pārskata perioda vēsture</h3>
 
-        <h4>Ieņēmumi</h4>
+        <div class="history-filters">
+          <div class="filter-group">
+            <label>Mēnesis</label>
+            <select v-model="historyFilter.month">
+              <option value="">Visi</option>
+              <option v-for="m in historyMonths" :key="m" :value="m">{{ m }}</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Ieņēmumu tips</label>
+            <select v-model="historyFilter.incomeType">
+              <option value="">Visi</option>
+              <option v-for="t in historyIncomeTypes" :key="t" :value="t">{{ t }}</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Izdevumu kategorija</label>
+            <select v-model="historyFilter.expenseCategory">
+              <option value="">Visas</option>
+              <option v-for="c in historyExpenseCategories" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </div>
+          <button class="ghost" @click="historyFilter = { month: '', incomeType: '', expenseCategory: '' }">Notīrīt filtrus</button>
+        </div>
+
+        <h4>Ieņēmumi <span class="filter-count" v-if="filteredIncomes.length !== history.incomes.length">({{ filteredIncomes.length }} / {{ history.incomes.length }})</span></h4>
         <div class="table-wrap">
           <table class="responsive-cards history-income-table">
             <thead><tr><th>Datums</th><th>Tips</th><th>Biedrs</th><th class="amount-col">Summa</th><th>Apraksts</th></tr></thead>
             <tbody>
-              <tr v-for="i in history.incomes">
+              <tr v-for="i in filteredIncomes">
                 <td>{{ i.entry_date }}</td>
                 <td>{{ i.type }}</td>
                 <td>{{ i.member_name }}</td>
@@ -183,12 +208,12 @@
           </table>
         </div>
 
-        <h4>Izdevumi</h4>
+        <h4>Izdevumi <span class="filter-count" v-if="filteredExpenses.length !== history.expenses.length">({{ filteredExpenses.length }} / {{ history.expenses.length }})</span></h4>
         <div class="table-wrap">
           <table class="responsive-cards history-expense-table">
             <thead><tr><th>Datums</th><th>Kategorija</th><th class="amount-col">Summa</th><th>Apraksts</th><th>Fails</th></tr></thead>
             <tbody>
-              <tr v-for="e in history.expenses">
+              <tr v-for="e in filteredExpenses">
                 <td>{{ e.entry_date }}</td>
                 <td>{{ e.category }}</td>
                 <td class="amount-col">{{ e.amount.toFixed(2) }}</td>

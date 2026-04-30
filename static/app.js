@@ -34,6 +34,7 @@ createApp({
       selectedFile: null,
       successMessage: "",
       errorMessage: "",
+      historyFilter: { month: "", incomeType: "", expenseCategory: "", },
     };
   },
   computed: {
@@ -69,6 +70,37 @@ createApp({
         }
       });
       return options;
+    },
+    historyMonths() {
+      const months = new Set();
+      [...(this.history.incomes || []), ...(this.history.expenses || [])].forEach(r => {
+        if (r.entry_date) months.add(r.entry_date.slice(0, 7));
+      });
+      return [...months].sort().reverse();
+    },
+    historyIncomeTypes() {
+      const types = new Set();
+      (this.history.incomes || []).forEach(r => { if (r.type) types.add(r.type); });
+      return [...types].sort();
+    },
+    historyExpenseCategories() {
+      const cats = new Set();
+      (this.history.expenses || []).forEach(r => { if (r.category) cats.add(r.category); });
+      return [...cats].sort();
+    },
+    filteredIncomes() {
+      return (this.history.incomes || []).filter(r => {
+        if (this.historyFilter.month && !r.entry_date.startsWith(this.historyFilter.month)) return false;
+        if (this.historyFilter.incomeType && r.type !== this.historyFilter.incomeType) return false;
+        return true;
+      });
+    },
+    filteredExpenses() {
+      return (this.history.expenses || []).filter(r => {
+        if (this.historyFilter.month && !r.entry_date.startsWith(this.historyFilter.month)) return false;
+        if (this.historyFilter.expenseCategory && r.category !== this.historyFilter.expenseCategory) return false;
+        return true;
+      });
     },
   },
   methods: {
