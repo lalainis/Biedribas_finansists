@@ -242,7 +242,7 @@ createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(this.forms.otherIncome),
         });
-        this.successMessage = "Ienemums pievienots";
+        this.successMessage = "Ieņēmums pievienots";
         this.forms.otherIncome.amount = "";
         this.forms.otherIncome.description = "";
         await this.refreshAll();
@@ -305,7 +305,7 @@ createApp({
         });
 
         if (!response.ok) {
-          let message = "Neizdevas atvert pielikumu";
+          let message = "Neizdevās atvērt pielikumu";
           try {
             const data = await response.json();
             message = data.error || message;
@@ -366,7 +366,7 @@ createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        this.successMessage = "Biedra dati saglabati";
+        this.successMessage = "Biedra dati saglabāti";
         await this.loadMembers();
       } catch (err) {
         this.errorMessage = err.message;
@@ -376,7 +376,7 @@ createApp({
       this.resetMessages();
       try {
         await this.api(`/api/members/${memberId}`, { method: "DELETE" });
-        this.successMessage = "Biedrs izdzests";
+        this.successMessage = "Biedrs izdzēsts";
         await this.loadMembers();
       } catch (err) {
         this.errorMessage = err.message;
@@ -386,7 +386,7 @@ createApp({
       this.resetMessages();
       try {
         await this.api(`/api/members/${memberId}/pin`, { method: "DELETE" });
-        this.successMessage = "PIN kods izdzests";
+        this.successMessage = "PIN kods izdzēsts";
         await this.loadMembers();
       } catch (err) {
         this.errorMessage = err.message;
@@ -404,7 +404,7 @@ createApp({
             carry_over: this.forms.period.carry_over,
           }),
         });
-        this.successMessage = "Parskata periods saglabats";
+        this.successMessage = "Pārskata periods saglabāts";
         await this.refreshAll();
       } catch (err) {
         this.errorMessage = err.message;
@@ -418,7 +418,7 @@ createApp({
           headers: { Authorization: `Bearer ${this.token}` },
         });
         if (!res.ok) {
-          let message = "Eksports neizdevas";
+          let message = "Eksports neizdevās";
           try {
             const data = await res.json();
             message = data.error || message;
@@ -432,7 +432,7 @@ createApp({
         document.body.appendChild(link);
         link.click();
         link.remove();
-        this.successMessage = "Bilance ir veiksmigi eksporteta";
+        this.successMessage = "Bilance ir veiksmīgi eksportēta";
       } catch (err) {
         this.errorMessage = err.message;
       }

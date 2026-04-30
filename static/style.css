@@ -1,8 +1,8 @@
 :root {
   --bg: linear-gradient(160deg, #f4f9f6 0%, #e7f4ff 45%, #fff8ee 100%);
   --card: rgba(255, 255, 255, 0.88);
-  --text: #173042;
-  --muted: #4f6675;
+  --text: #041827;
+  --muted: #42647a;
   --line: rgba(23, 48, 66, 0.14);
   --brand: #047857;
   --accent: #ea580c;
@@ -17,7 +17,10 @@ body {
   margin: 0;
   font-family: "Manrope", "Segoe UI", sans-serif;
   color: var(--text);
-  background: var(--bg);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.58)), url('/static/attēls fonam.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   min-height: 100vh;
 }
 
@@ -288,7 +291,7 @@ td.amount-col input[type="number"] {
 .excel-export-btn:hover {
   transform: translateY(-1px);
   filter: none;
-  background: rgba(4, 120, 87, 0.14);
+  background: rgba(10, 218, 159, 0.14);
 }
 
 .muted {
