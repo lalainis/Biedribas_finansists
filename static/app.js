@@ -35,6 +35,7 @@ createApp({
       successMessage: "",
       errorMessage: "",
       historyFilter: { month: "", incomeType: "", expenseCategory: "", },
+      historyCollapsed: { incomes: false, expenses: false },
     };
   },
   computed: {
@@ -205,8 +206,7 @@ createApp({
         this.user = data.user;
         localStorage.setItem("token", this.token);
         localStorage.setItem("user", JSON.stringify(this.user));
-        this.tab = this.canWriteIncome ? "income" : "history";
-        await this.refreshAll();
+        this.tab = "member-list";
       } catch (err) {
         this.errorMessage = err.message;
       }
@@ -474,7 +474,7 @@ createApp({
     await this.loadConfig();
     if (this.token && this.user) {
       await this.refreshAll();
-      this.tab = this.canWriteIncome ? "income" : "history";
+      this.tab = "member-list";
     }
   },
 }).mount("#app");

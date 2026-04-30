@@ -89,8 +89,9 @@
         <button v-if="canWriteExpense" @click="tab='expense'" :class="{active: tab==='expense'}">Izdevumi</button>
         <button class="outline-tab" @click="tab='history'" :class="{active: tab==='history'}">Vēsture</button>
         <button class="outline-tab" @click="tab='member-list'" :class="{active: tab==='member-list'}">Biedru saraksts</button>
-        <button v-if="canManageMembers" @click="tab='members'" :class="{active: tab==='members'}">Biedri</button>
-        <button v-if="canManagePeriod" @click="tab='period'" :class="{active: tab==='period'}">Periods</button>
+        <span class="tabs-spacer"></span>
+        <button v-if="canManageMembers" class="outline-tab" @click="tab='members'" :class="{active: tab==='members'}">Biedri</button>
+        <button v-if="canManagePeriod" class="outline-tab" @click="tab='period'" :class="{active: tab==='period'}">Periods</button>
       </nav>
 
       <section class="card" v-if="tab==='member-list'">
@@ -192,8 +193,11 @@
           <button class="ghost" @click="historyFilter = { month: '', incomeType: '', expenseCategory: '' }">Notīrīt filtrus</button>
         </div>
 
-        <h4>Ieņēmumi <span class="filter-count" v-if="filteredIncomes.length !== history.incomes.length">({{ filteredIncomes.length }} / {{ history.incomes.length }})</span></h4>
-        <div class="table-wrap">
+        <h4 class="collapsible-heading" @click="historyCollapsed.incomes = !historyCollapsed.incomes">
+          <svg class="collapse-icon" :class="{ rotated: historyCollapsed.incomes }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          Ieņēmumi <span class="filter-count" v-if="filteredIncomes.length !== history.incomes.length">({{ filteredIncomes.length }} / {{ history.incomes.length }})</span>
+        </h4>
+        <div class="table-wrap" v-show="!historyCollapsed.incomes">
           <table class="responsive-cards history-income-table">
             <thead><tr><th>Datums</th><th>Tips</th><th>Biedrs</th><th class="amount-col">Summa</th><th>Apraksts</th></tr></thead>
             <tbody>
@@ -208,8 +212,11 @@
           </table>
         </div>
 
-        <h4>Izdevumi <span class="filter-count" v-if="filteredExpenses.length !== history.expenses.length">({{ filteredExpenses.length }} / {{ history.expenses.length }})</span></h4>
-        <div class="table-wrap">
+        <h4 class="collapsible-heading" @click="historyCollapsed.expenses = !historyCollapsed.expenses">
+          <svg class="collapse-icon" :class="{ rotated: historyCollapsed.expenses }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          Izdevumi <span class="filter-count" v-if="filteredExpenses.length !== history.expenses.length">({{ filteredExpenses.length }} / {{ history.expenses.length }})</span>
+        </h4>
+        <div class="table-wrap" v-show="!historyCollapsed.expenses">
           <table class="responsive-cards history-expense-table">
             <thead><tr><th>Datums</th><th>Kategorija</th><th class="amount-col">Summa</th><th>Apraksts</th><th>Fails</th></tr></thead>
             <tbody>

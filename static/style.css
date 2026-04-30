@@ -176,6 +176,10 @@ button.danger {
   gap: 8px;
 }
 
+.tabs-spacer {
+  flex: 1;
+}
+
 .tabs button {
   width: auto;
   margin: 0;
@@ -304,6 +308,27 @@ td.amount-col input[type="number"] {
   font-size: 0.8rem;
   font-weight: 400;
   color: var(--muted);
+}
+
+.collapsible-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapsible-heading:hover {
+  color: var(--brand);
+}
+
+.collapse-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.collapse-icon.rotated {
+  transform: rotate(-90deg);
 }
 
 .excel-export-btn {
