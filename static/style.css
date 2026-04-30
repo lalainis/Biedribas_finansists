@@ -105,7 +105,7 @@ button.ghost {
   margin: 0;
   background: transparent;
   color: var(--text);
-  border: 1px solid var(--line);
+  border: 2px solid var(--brand);
 }
 
 button.danger {
